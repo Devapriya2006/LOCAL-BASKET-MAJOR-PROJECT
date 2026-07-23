@@ -20,10 +20,8 @@ Local Basket bridges the gap between local farmers/producers and nearby consumer
 - 🥕 **Live Inventory** — Farmers update stock and pricing in real time
 - 🛒 **Simple Ordering** — Add to basket, checkout, and choose pickup or delivery slots
 - 👩‍🌾 **Farmer Dashboard** — Manage listings, orders, and availability from one place
-- ⭐ **Reviews & Ratings** — Build trust between buyers and local producers
 - 🔔 **Notifications** — Alerts for order status, new seasonal produce, and restocks
 - 💳 **Secure Payments** — Integrated payment gateway for online transactions
-- 🗺️ **Interactive Map View** — Visualize nearby farms/vendors on a map
 
 ---
 
@@ -37,7 +35,6 @@ Local Basket bridges the gap between local farmers/producers and nearby consumer
 | Backend | Node.js / Express |
 | Database | MongoDB / PostgreSQL |
 | Auth | JWT / OAuth |
-| Maps & Geolocation | Google Maps API / Mapbox |
 | Payments | Stripe / Razorpay |
 | Hosting | Vercel / Render / AWS |
 
