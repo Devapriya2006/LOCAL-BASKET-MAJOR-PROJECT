@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LocalBasket –HypeLocal Farmers' Market Portal </title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <style>
+    .category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+    .category-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 1.25rem .75rem;
+      text-align: center;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all var(--transition);
+      box-shadow: var(--shadow-sm);
+    }
+    .category-card:hover, .category-card.active {
+      border-color: var(--leaf);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow);
+    }
+    .category-icon { font-size: 2rem; margin-bottom: .4rem; }
+    .category-name { font-size: .8rem; font-weight: 600; color: var(--earth); }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .feature-card { background: white; border-radius: var(--radius-lg); padding: 1.75rem 1.5rem; box-shadow: var(--shadow-sm); border: 1px solid var(--gray-100); }
+    .feature-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .feature-card h3 { margin-bottom: .5rem; font-size: 1.05rem; }
+    .feature-card p { font-size: .88rem; color: var(--bark); }
+    .farmer-strip { background: var(--earth); padding: 3rem 0; margin: 2rem 0; }
+    .farmer-strip h2 { color: var(--straw); margin-bottom: .75rem; }
+    .farmer-strip p { color: var(--gray-200); max-width: 480px; margin-bottom: 1.5rem; }
+    .hero-stats { display: flex; gap: 2.5rem; margin-top: 2.5rem; flex-wrap: wrap; }
+    .hero-stat .val { font-size: 2rem; font-weight: 700; font-family: var(--ff-display); color: var(--mint); }
+    .hero-stat .lbl { font-size: .8rem; color: var(--gray-400); margin-top: .1rem; }
+    #products-section { padding: 3rem 0 4rem; }
+    .sort-select { padding: .45rem .85rem; border: 1.5px solid var(--gray-200); border-radius: var(--radius); font-family: var(--ff-body); font-size: .85rem; background: white; color: var(--soil); }
+
+    .hero-search-bar { margin-bottom: 1rem; }
+    .categories-section { background: white; border-bottom: 1px solid var(--gray-100); }
+    .category-heading { font-family: var(--ff-display); }
+    .products-toolbar { flex-wrap: wrap; gap: .75rem; }
+    .section-divider-grow { flex: 1; }
+    .why-section { background: var(--gray-50); }
+    .farmer-strip-grid { display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center; flex-wrap: wrap; }
+    .farmer-emoji { font-size: 6rem; opacity: .3; }
+    .site-footer { background: var(--soil); color: var(--gray-200); padding: 2rem 0; text-align: center; }
+    .site-footer-brand { justify-content: center; margin-bottom: .75rem; font-size: 1.3rem; }
+    .site-footer-tagline { font-size: .85rem; color: var(--gray-400); }
+    .site-footer-links { margin-top: 1.25rem; display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; font-size: .85rem; }
+    .site-footer-link { color: var(--gray-400); }
+    .site-footer-copy { margin-top: 1.5rem; font-size: .75rem; color: var(--gray-600); }
+    /* Skeleton helpers (moved inline styles to CSS) */
+    .skeleton-img { height: 180px; }
+    .skeleton-line { height: 14px; width: 50%; }
+    .skeleton-line.mb-1 { height: 18px; width: 70%; }
+  </style>
+</head>
+<body>
+
+<!-- ─── Navbar ──────────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="navbar-brand"><span class="brand-icon">🧺</span> LocalBasket</a>
+    <button class="navbar-toggle" onclick="toggleMobileNav()">☰</button>
+    <ul class="navbar-nav" id="main-nav">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="pages/products.html">Shop</a></li>
+      <li><a href="pages/farmers.html">Farmers</a></li>
+      <li id="nav-login"><a href="pages/login.html">Login</a></li>
+      <li id="nav-dashboard" class="hidden"><a href="#" id="dashboard-link">Dashboard</a></li>
+      <li id="nav-logout" class="hidden"><a href="#" onclick="logout()">Logout</a></li>
+    </ul>
+    <a href="pages/cart.html" class="navbar-cart" id="cart-btn">
+      🛒 Cart
+      <span class="cart-badge hidden" id="cart-count">0</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ─── Hero ─────────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container hero-content">
+    <h1>Hyperlocal Farmers' Market Portal</h1>
+    <h1>Farm Fresh, <em>Delivered</em><br>to Your Doorstep</h1>
+    <p>Connect directly with local farmers in your area. Get the freshest produce at fair prices — no middlemen, just honest food.</p>
+    <div class="search-bar hero-search-bar">
+      <select id="search-city" title="Select a city">
+        <option value="">All Cities</option>
+        <option>Kharagpur</option><option>Kolkata</option><option>Delhi</option>
+        <option>Mumbai</option><option>Bangalore</option><option>Chennai</option>
+        <option>Hyderabad</option><option>Pune</option>
+      </select>
+      <input type="text" id="search-input" placeholder="Search tomatoes, spinach, milk…" autocomplete="off">
+      <button class="btn btn-primary" onclick="doSearch()">🔍 Search</button>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="val">500+</div><div class="lbl">Local Farmers</div></div>
+      <div class="hero-stat"><div class="val">5k+</div><div class="lbl">Products Listed</div></div>
+      <div class="hero-stat"><div class="val">50k+</div><div class="lbl">Happy Customers</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Categories ────────────────────────────────────────────────────────────── -->
+<section class="section-sm categories-section">
+  <div class="container">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="category-heading">Browse by Category</h3>
+      <a href="pages/products.html" class="btn btn-ghost btn-sm">View All →</a>
+    </div>
+    <div class="category-grid" id="category-grid">
+      <div class="category-card" data-cat="vegetables" onclick="browseCategory('vegetables')">
+        <div class="category-icon">🥦</div><div class="category-name">Vegetables</div>
+      </div>
+      <div class="category-card" data-cat="fruits" onclick="browseCategory('fruits')">
+        <div class="category-icon">🍎</div><div class="category-name">Fruits</div>
+      </div>
+      <div class="category-card" data-cat="grains" onclick="browseCategory('grains')">
+        <div class="category-icon">🌾</div><div class="category-name">Grains</div>
+      </div>
+      <div class="category-card" data-cat="dairy" onclick="browseCategory('dairy')">
+        <div class="category-icon">🥛</div><div class="category-name">Dairy</div>
+      </div>
+      <div class="category-card" data-cat="eggs" onclick="browseCategory('eggs')">
+        <div class="category-icon">🥚</div><div class="category-name">Eggs</div>
+      </div>
+      <div class="category-card" data-cat="herbs" onclick="browseCategory('herbs')">
+        <div class="category-icon">🌿</div><div class="category-name">Herbs</div>
+      </div>
+      <div class="category-card" data-cat="spices" onclick="browseCategory('spices')">
+        <div class="category-icon">🌶️</div><div class="category-name">Spices</div>
+      </div>
+      <div class="category-card" data-cat="other" onclick="browseCategory('other')">
+        <div class="category-icon">🧺</div><div class="category-name">Others</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Products ──────────────────────────────────────────────────────────────── -->
+<section id="products-section">
+  <div class="container">
+    <div class="flex items-center justify-between mb-2 products-toolbar">
+      <div class="section-divider section-divider-grow">
+        <h2>Fresh Picks</h2>
+      </div>
+      <div class="flex gap-1 items-center">
+        <select class="sort-select" id="sort-select" title="Sort products" onchange="loadProducts()">
+          <option value="">Latest</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="rating">Top Rated</option>
+          <option value="popular">Most Popular</option>
+        </select>
+        <a href="pages/products.html" class="btn btn-outline btn-sm">All Products</a>
+      </div>
+    </div>
+    <div class="filter-bar" id="filter-bar">
+      <span class="filter-chip active" data-cat="" onclick="filterCategory(this, '')">All</span>
+      <span class="filter-chip" data-cat="vegetables" onclick="filterCategory(this, 'vegetables')">🥦 Vegetables</span>
+      <span class="filter-chip" data-cat="fruits" onclick="filterCategory(this, 'fruits')">🍎 Fruits</span>
+      <span class="filter-chip" data-cat="dairy" onclick="filterCategory(this, 'dairy')">🥛 Dairy</span>
+      <span class="filter-chip" data-cat="grains" onclick="filterCategory(this, 'grains')">🌾 Grains</span>
+      <span class="filter-chip organic" data-cat="organic" onclick="filterCategory(this, 'organic')">🌿 Organic</span>
+    </div>
+    <div class="products-grid" id="products-grid">
+      <!-- Skeleton -->
+      ${[...Array(8)].map(() => `
+        <div class="card"><div class="skeleton skeleton-img"></div><div class="card-body"><div class="skeleton skeleton-line mb-1"></div><div class="skeleton skeleton-line"></div></div></div>
+      `).join('')}
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</section>
+
+<!-- ─── Why LocalBasket ───────────────────────────────────────────────────────── -->
+<section class="section why-section">
+  <div class="container">
+    <div class="text-center mb-3">
+      <h2>Why Choose LocalBasket?</h2>
+      <p class="text-earth">Fresh, fair, and local — that's our promise</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon">🌱</div><h3>Farm Fresh</h3><p>Products harvested within 24-48 hours of delivery. Zero cold storage, maximum nutrition.</p></div>
+      <div class="feature-card"><div class="feature-icon">💰</div><h3>Fair Prices</h3><p>No middlemen means better prices for both farmers and customers. Everyone wins.</p></div>
+      <div class="feature-card"><div class="feature-icon">📍</div><h3>Hyperlocal</h3><p>Shop from farmers in your own city. Support local agriculture and reduce food miles.</p></div>
+      <div class="feature-card"><div class="feature-icon">🤝</div><h3>Direct Connection</h3><p>Know exactly who grows your food. Build relationships with local farmers.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Farmer CTA ────────────────────────────────────────────────────────────── -->
+<section class="farmer-strip">
+  <div class="container farmer-strip-grid">
+    <div>
+      <h2>Are You a Farmer?</h2>
+      <p>Join thousands of farmers already selling directly to customers. List your produce, set your prices, grow your income — no commissions, no hassle.</p>
+      <a href="pages/login.html?role=farmer" class="btn btn-secondary btn-lg">🌾 Start Selling Today</a>
+    </div>
+    <div class="farmer-emoji">🚜</div>
+  </div>
+</section>
+
+<!-- ─── Footer ────────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-container">
+
+    <!-- Brand Section -->
+    <div class="footer-section">
+      <h2 class="logo">LocalBasket</h2>
+      <p>Connecting farmers with communities. Fresh, fair, local.</p>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="footer-section">
+      <h3>Quick Links</h3>
+      <ul>
+        <li><a href="pages/products.html">Shop</a></li>
+        <li><a href="pages/farmers.html">Farmers</a></li>
+        <li><a href="pages/login.html">Login</a></li>
+        <li><a href="pages/login.html?role=customer">Register</a></li>
+      </ul>
+    </div>
+
+    <!-- Contact -->
+    <div class="footer-section">
+      <h3>Contact</h3>
+      <p>Email: supportlocalbasket@gmail.com</p>
+      <p>Phone: +91 9832341502</p>
+    </div>
+
+    <!-- Social -->
+    <div class="footer-section">
+      <h3>Follow Us</h3>
+      <div class="socials">
+        <a href="#">🌐</a>
+        <a href="#">📘</a>
+        <a href="#">📸</a>
+        <a href="#">🐦</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-bottom">
+    <p>© 2026 LocalBasket | Built using MERN Stack</p>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+let currentFilter = { category: '', organic: false, sort: '', page: 1 };
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  updateNav();
+  loadProducts();
+});
+
+async function updateNav() {
+  if (api.isLoggedIn()) {
+    let user = api.getUser();
+    try {
+      const res = await api.auth.me();
+      user = res.user;
+      api.setAuth(api.getToken(), user);
+    } catch {}
+    document.getElementById('nav-login').classList.add('hidden');
+    document.getElementById('nav-logout').classList.remove('hidden');
+    document.getElementById('nav-dashboard').classList.remove('hidden');
+    const link = document.getElementById('dashboard-link');
+    link.textContent = user.role === 'admin' ? 'Admin Panel' : '👤 ' + user.name.split(' ')[0];
+    link.href = nav.dashboardPath(user);
+    updateCartBadge();
+  }
+}
+
+async function updateCartBadge() {
+  try {
+    const user = api.getUser();
+    if (user && user.role === 'customer') {
+      const res = await api.cart.get();
+      const count = res.cart.reduce((a, i) => a + i.quantity, 0);
+      const badge = document.getElementById('cart-count');
+      if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+    }
+  } catch {}
+}
+
+function logout() {
+  api.clearAuth();
+  window.location.reload();
+}
+
+function toggleMobileNav() {
+  document.getElementById('main-nav').classList.toggle('open');
+}
+
+async function loadProducts() {
+  const grid = document.getElementById('products-grid');
+  const sort = document.getElementById('sort-select').value;
+  const params = { limit: 8, sort, page: currentFilter.page };
+  if (currentFilter.category) params.category = currentFilter.category;
+  if (currentFilter.organic) params.organic = 'true';
+
+  try {
+    const { products, pages, currentPage } = await api.products.getAll(params);
+    renderProducts(grid, products);
+    renderPagination(pages, currentPage);
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🌾</div><h3>No products found</h3><p>Try changing your filters or check back later.</p></div>`;
+  }
+}
+
+function renderProducts(grid, products) {
+  if (!products.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🥬</div><h3>Nothing here yet</h3><p>No products match your filters.</p></div>`;
+    return;
+  }
+  const catIcons = { vegetables:'🥦', fruits:'🍎', grains:'🌾', dairy:'🥛', eggs:'🥚', herbs:'🌿', spices:'🌶️', other:'🧺' };
+  grid.innerHTML = products.map(p => `
+    <div class="card product-card" onclick="window.location='pages/product.html?id=${p._id}'">
+      <div class="product-img-wrap">
+        ${p.images && p.images[0]
+          ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy">`
+          : `<div class="product-img-placeholder">${catIcons[p.category] || '🥬'}<span style="font-size:.75rem;margin-top:.3rem">${p.category}</span></div>`
+        }
+        ${p.isOrganic ? '<span class="product-badge organic">Organic</span>' : ''}
+        ${!p.isAvailable || p.quantity === 0 ? '<span class="product-badge out-of-stock">Out of Stock</span>' : ''}
+      </div>
+      <div class="card-body">
+        <div class="product-title">${p.name}</div>
+        <div class="product-farmer">by ${p.farmer?.farmName || p.farmer?.name || 'Local Farmer'}</div>
+        <div class="flex items-center justify-between mt-1">
+          <div>
+            <span class="product-price">₹${p.price}</span>
+            <span class="product-unit">/${p.unit}</span>
+          </div>
+          <div class="product-rating" title="${p.averageRating} stars">
+            ${p.averageRating > 0 ? '★ ' + p.averageRating : ''}
+          </div>
+        </div>
+        <div style="margin-top:.6rem">
+          <button class="btn btn-primary btn-sm w-full" onclick="event.stopPropagation();addToCart('${p._id}')">
+            🛒 Add to Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPagination(pages, current) {
+  const el = document.getElementById('pagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  if (current > 1) html += `<button class="page-btn" onclick="goPage(${current-1})">‹</button>`;
+  for (let i = 1; i <= pages; i++) {
+    html += `<button class="page-btn ${i===current?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  if (current < pages) html += `<button class="page-btn" onclick="goPage(${current+1})">›</button>`;
+  el.innerHTML = html;
+}
+
+function goPage(p) { currentFilter.page = p; loadProducts(); window.scrollTo(0, document.getElementById('products-section').offsetTop - 80); }
+
+function filterCategory(el, cat) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  if (cat === 'organic') { currentFilter.organic = true; currentFilter.category = ''; }
+  else { currentFilter.organic = false; currentFilter.category = cat; }
+  currentFilter.page = 1;
+  loadProducts();
+}
+
+function browseCategory(cat) {
+  window.location.href = `pages/products.html?category=${cat}`;
+}
+
+function doSearch() {
+  const search = document.getElementById('search-input').value;
+  const city = document.getElementById('search-city').value;
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (city) params.set('city', city);
+  window.location.href = 'pages/products.html?' + params.toString();
+}
+
+document.getElementById('search-input').addEventListener('keypress', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+async function addToCart(productId) {
+  if (!api.isLoggedIn()) { window.location.href = 'pages/login.html'; return; }
+  const user = api.getUser();
+  if (user.role !== 'customer') { toast.info('Only customers can add items to cart.'); return; }
+  try {
+    await api.cart.add(productId, 1);
+    toast.success('Added to cart!');
+    updateCartBadge();
+  } catch (err) {
+    toast.error(err.message);
+  }
+}
+</script>
+</body>
+</html>

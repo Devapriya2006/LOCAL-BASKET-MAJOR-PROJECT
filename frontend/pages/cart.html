@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart & Checkout – LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .checkout-step { display: none; }
+    .checkout-step.active { display: block; }
+    .step-indicator { display: flex; align-items: center; gap: 0; margin-bottom: 2rem; }
+    .step { display: flex; align-items: center; gap: .5rem; }
+    .step-num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700;
+      color: var(--gray-400);
+      transition: all var(--transition);
+    }
+    .step.active .step-num { background: var(--leaf); border-color: var(--leaf); color: white; }
+    .step.done .step-num { background: var(--sage); border-color: var(--sage); color: white; }
+    .step-label { font-size: .82rem; font-weight: 600; color: var(--gray-400); }
+    .step.active .step-label, .step.done .step-label { color: var(--leaf); }
+    .step-line { flex: 1; height: 2px; background: var(--gray-200); margin: 0 .5rem; }
+    .step-line.done { background: var(--sage); }
+    .order-summary { background: white; border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); position: sticky; top: 80px; }
+    .summary-row { display: flex; justify-content: space-between; padding: .4rem 0; font-size: .9rem; }
+    .summary-total { font-size: 1.15rem; font-weight: 700; color: var(--leaf); border-top: 2px solid var(--gray-100); padding-top: .75rem; margin-top: .5rem; }
+    .payment-option {
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 1rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: .75rem;
+    }
+    .payment-option:hover, .payment-option.active { border-color: var(--leaf); background: rgba(45,106,45,.04); }
+    .payment-option .pay-icon { font-size: 1.5rem; }
+    .success-animation { text-align: center; padding: 2rem; }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; animation: popIn .5s cubic-bezier(.68,-.55,.27,1.55); }
+    @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    #upi-details { display: none; margin-top: 1rem; background: var(--gray-50); border-radius: var(--radius); padding: 1.25rem; }
+    /* Replace inline styles used in markup */
+    .center-loader { text-align: center; padding: 3rem; }
+    .center-loader .spinner { margin: auto; }
+    .card-panel { background: white; border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-sm); }
+    .font-weight-600 { font-weight: 600; }
+    .order-summary h3 { margin-bottom: 1rem; font-family: var(--ff-display); }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="../index.html" class="navbar-brand">🧺 LocalBasket</a>
+    <ul class="navbar-nav">
+      <li><a href="products.html">← Continue Shopping</a></li>
+    </ul>
+    <div class="nav-user" id="nav-user"></div>
+  </div>
+</nav>
+
+<div class="container page-padding">
+
+  <!-- Step Indicator -->
+  <div class="step-indicator" id="step-indicator">
+    <div class="step active" id="step-1">
+      <div class="step-num">1</div>
+      <div class="step-label">Cart</div>
+    </div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step" id="step-2">
+      <div class="step-num">2</div>
+      <div class="step-label">Delivery</div>
+    </div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step" id="step-3">
+      <div class="step-num">3</div>
+      <div class="step-label">Payment</div>
+    </div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step" id="step-4">
+      <div class="step-num">4</div>
+      <div class="step-label">Confirm</div>
+    </div>
+  </div>
+
+  <div class="cart-layout" id="cart-layout">
+    <!-- Left Column -->
+    <div>
+
+      <!-- Step 1: Cart -->
+      <div class="checkout-step active" id="checkout-step-1">
+        <h2 class="mb-2">Your Cart</h2>
+        <div id="cart-items-list">
+          <div class="center-loader"><div class="spinner"></div></div>
+        </div>
+        <div id="cart-actions" class="hidden mt-2">
+          <div class="flex justify-between items-center">
+            <button class="btn btn-ghost btn-sm" onclick="clearCart()">🗑️ Clear Cart</button>
+            <button class="btn btn-primary btn-lg" onclick="goToStep(2)">Proceed to Delivery →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Delivery -->
+      <div class="checkout-step" id="checkout-step-2">
+        <h2 class="mb-2">Delivery Details</h2>
+        <div class="card-panel">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-control" id="del-name" placeholder="Recipient name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone *</label>
+              <input type="tel" class="form-control" id="del-phone" placeholder="10-digit phone">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address *</label>
+            <textarea class="form-control" id="del-address" rows="2" placeholder="House/Flat No., Street, Area"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">City *</label>
+              <input type="text" class="form-control" id="del-city" placeholder="City">
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" class="form-control" id="del-state" placeholder="State">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Pincode *</label>
+              <input type="text" class="form-control" id="del-pincode" placeholder="6-digit pincode">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preferred Delivery Slot</label>
+              <select class="form-control" id="del-slot">
+                <option value="">Any time</option>
+                <option>Morning (7 AM – 11 AM)</option>
+                <option>Afternoon (12 PM – 4 PM)</option>
+                <option>Evening (5 PM – 8 PM)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Order Notes (optional)</label>
+            <input type="text" class="form-control" id="del-notes" placeholder="Special instructions for the farmer or delivery…">
+          </div>
+        </div>
+        <div class="flex gap-2 mt-2">
+          <button class="btn btn-ghost" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary btn-lg" onclick="goToStep(3)">Continue to Payment →</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Payment -->
+      <div class="checkout-step" id="checkout-step-3">
+        <h2 class="mb-2">Payment Method</h2>
+        <div id="payment-options">
+          <div class="payment-option active" data-method="COD" onclick="selectPayment(this)">
+            <div class="pay-icon">💵</div>
+            <div>
+              <div class="font-weight-600">Cash on Delivery</div>
+              <div class="text-muted text-sm">Pay when your order arrives</div>
+            </div>
+          </div>
+          <div class="payment-option" data-method="UPI" onclick="selectPayment(this)">
+            <div class="pay-icon">📱</div>
+            <div>
+              <div class="font-weight-600">UPI Payment</div>
+              <div class="text-muted text-sm">Pay via Google Pay, PhonePe, Paytm, etc.</div>
+            </div>
+            <span class="badge badge-green badge-margin-auto">Instant</span>
+          </div>
+        </div>
+
+        <div id="upi-details">
+          <div class="form-group">
+            <label class="form-label">UPI ID</label>
+            <input type="text" class="form-control" id="upi-id" placeholder="yourname@upi">
+          </div>
+        </div>
+
+        <div class="flex gap-2 mt-2">
+          <button class="btn btn-ghost" onclick="goToStep(2)">← Back</button>
+          <button class="btn btn-primary btn-lg" id="place-order-btn" onclick="placeOrder()">✅ Place Order</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Success -->
+      <div class="checkout-step" id="checkout-step-4">
+        <div class="success-animation">
+          <div class="success-icon">🎉</div>
+          <h2 class="mb-2">Order Placed Successfully!</h2>
+          <p class="order-confirm-text">Your order has been sent to the farmer. You'll receive updates as they prepare and dispatch your fresh produce.</p>
+          <div id="order-confirm-info" class="order-confirm-info"></div>
+          <div class="flex gap-2 success-actions">
+            <a href="customer-dashboard.html" class="btn btn-primary btn-lg">📦 Track Orders</a>
+            <a href="products.html" class="btn btn-outline btn-lg">🛍️ Continue Shopping</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Order Summary -->
+    <div id="summary-col">
+      <div class="order-summary">
+        <h3 class="summary-title">Order Summary</h3>
+        <div id="summary-items"></div>
+        <hr class="divider">
+        <div class="summary-row"><span>Subtotal</span><span id="summary-subtotal">₹0</span></div>
+        <div class="summary-row"><span>Delivery</span><span class="delivery-free">Free</span></div>
+        <div class="summary-row summary-total"><span>Total</span><span id="summary-total">₹0</span></div>
+        <div class="mt-2 secure-checkout-text">🔒 Secure checkout · Free local delivery</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Moved inline styles for order confirmation info into CSS */
+  .order-confirm-info{
+    background:var(--gray-50);
+    border-radius:var(--radius);
+    padding:1.25rem;
+    max-width:360px;
+    margin:0 auto 2rem;
+    text-align:left;
+  }
+  .secure-checkout-text{
+    font-size:.78rem;
+    color:var(--gray-400);
+    text-align:center;
+  }
+  .delivery-free{
+    color:var(--leaf);
+  }
+</style>
+
+<script src="../js/api.js"></script>
+<script>
+let cartData = [];
+let selectedPayment = 'COD';
+let currentStep = 1;
+
+const user = requireAuth('customer');
+if (!user) throw new Error('redirect');
+
+document.getElementById('nav-user').textContent = '👤 ' + user.name.split(' ')[0];
+
+// Pre-fill delivery info from user profile
+if (user.location) {
+  document.getElementById('del-city').value = user.location.city || '';
+  document.getElementById('del-pincode').value = user.location.pincode || '';
+}
+document.getElementById('del-name').value = user.name;
+document.getElementById('del-phone').value = user.phone || '';
+
+loadCart();
+
+async function loadCart() {
+  try {
+    const { cart } = await api.cart.get();
+    cartData = cart;
+    renderCart();
+    renderSummary();
+  } catch (err) {
+    document.getElementById('cart-items-list').innerHTML = `<p class="text-muted text-center p-2">Error loading cart: ${err.message}</p>`;
+  }
+}
+
+function renderCart() {
+  const el = document.getElementById('cart-items-list');
+  const actEl = document.getElementById('cart-actions');
+
+  if (!cartData.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <h3>Your cart is empty</h3>
+        <p>Add some fresh produce from local farmers!</p>
+        <a href="products.html" class="btn btn-primary mt-2">Browse Products</a>
+      </div>
+    `;
+    actEl.classList.add('hidden');
+    document.getElementById('cart-layout').style.gridTemplateColumns = '1fr';
+    document.getElementById('summary-col').style.display = 'none';
+    return;
+  }
+
+  actEl.classList.remove('hidden');
+
+  el.innerHTML = `<div style="background:white;border-radius:var(--radius-lg);padding:1.5rem;box-shadow:var(--shadow-sm)">` +
+    cartData.map(item => {
+      const p = item.product;
+      const catIcons = { vegetables:'🥦', fruits:'🍎', grains:'🌾', dairy:'🥛', eggs:'🥚', herbs:'🌿', spices:'🌶️', other:'🧺' };
+      return `
+        <div class="cart-item">
+          ${p.images && p.images[0]
+            ? `<img src="${p.images[0]}" alt="${p.name}" class="cart-item-img">`
+            : `<div class="cart-item-img" style="display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--gray-100)">${catIcons[p.category]||'🥬'}</div>`
+          }
+          <div class="cart-item-info">
+            <div style="font-weight:600;margin-bottom:.2rem">${p.name}</div>
+            <div style="font-size:.8rem;color:var(--bark);margin-bottom:.4rem">
+              by ${p.farmer?.farmName||p.farmer?.name||'Farmer'}
+              ${p.location?.city ? '· ' + p.location.city : ''}
+            </div>
+            <div style="font-size:.85rem;color:var(--leaf);font-weight:700">₹${p.price}/${p.unit}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.5rem;flex-shrink:0">
+            <div class="qty-control">
+              <button class="qty-btn" onclick="updateQty('${p._id}', ${item.quantity - 1})">−</button>
+              <span class="qty-display">${item.quantity}</span>
+              <button class="qty-btn" onclick="updateQty('${p._id}', ${item.quantity + 1})">+</button>
+            </div>
+            <div style="font-weight:700">₹${(p.price * item.quantity).toFixed(2)}</div>
+            <button class="btn btn-ghost btn-sm" onclick="removeItem('${p._id}')" style="font-size:.75rem;padding:.2rem .5rem;color:var(--tomato)">Remove</button>
+          </div>
+        </div>
+      `;
+    }).join('') + '</div>';
+}
+
+function renderSummary() {
+  const subtotal = cartData.reduce((a, i) => a + i.product.price * i.quantity, 0);
+  document.getElementById('summary-subtotal').textContent = fmt.currency(subtotal);
+  document.getElementById('summary-total').textContent = fmt.currency(subtotal);
+  document.getElementById('summary-items').innerHTML = cartData.map(i => `
+    <div class="summary-row"><span>${i.product.name} ×${i.quantity}</span><span>₹${(i.product.price * i.quantity).toFixed(2)}</span></div>
+  `).join('');
+}
+
+async function updateQty(productId, qty) {
+  try {
+    await api.cart.update(productId, qty);
+    await loadCart();
+  } catch (err) { toast.error(err.message); }
+}
+
+async function removeItem(productId) {
+  try {
+    await api.cart.remove(productId);
+    toast.success('Item removed');
+    await loadCart();
+  } catch (err) { toast.error(err.message); }
+}
+
+async function clearCart() {
+  if (!confirm('Clear your entire cart?')) return;
+  try {
+    await api.cart.clear();
+    cartData = [];
+    renderCart();
+    renderSummary();
+    toast.success('Cart cleared');
+  } catch (err) { toast.error(err.message); }
+}
+
+function goToStep(step) {
+  if (step === 2) {
+    if (!cartData.length) { toast.error('Your cart is empty!'); return; }
+  }
+  if (step === 3) {
+    const name = document.getElementById('del-name').value.trim();
+    const phone = document.getElementById('del-phone').value.trim();
+    const address = document.getElementById('del-address').value.trim();
+    const city = document.getElementById('del-city').value.trim();
+    const pincode = document.getElementById('del-pincode').value.trim();
+    if (!name || !phone || !address || !city || !pincode) {
+      toast.error('Please fill all required delivery fields.');
+      return;
+    }
+  }
+
+  currentStep = step;
+  document.querySelectorAll('.checkout-step').forEach(el => el.classList.remove('active'));
+  document.getElementById(`checkout-step-${step}`).classList.add('active');
+
+  // Update step indicators
+  for (let i = 1; i <= 4; i++) {
+    const stepEl = document.getElementById(`step-${i}`);
+    stepEl.classList.remove('active', 'done');
+    if (i < step) stepEl.classList.add('done');
+    if (i === step) stepEl.classList.add('active');
+    if (i < 4) {
+      const line = document.getElementById(`line-${i}`);
+      line.classList.toggle('done', i < step);
+    }
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function selectPayment(el) {
+  document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  selectedPayment = el.dataset.method;
+  document.getElementById('upi-details').style.display = selectedPayment === 'UPI' ? 'block' : 'none';
+}
+
+async function placeOrder() {
+  const btn = document.getElementById('place-order-btn');
+
+  const deliveryAddress = {
+    name: document.getElementById('del-name').value.trim(),
+    phone: document.getElementById('del-phone').value.trim(),
+    address: document.getElementById('del-address').value.trim(),
+    city: document.getElementById('del-city').value.trim(),
+    state: document.getElementById('del-state').value.trim(),
+    pincode: document.getElementById('del-pincode').value.trim()
+  };
+
+  const orderData = {
+    items: cartData.map(i => ({ product: i.product._id, quantity: i.quantity })),
+    deliveryAddress,
+    paymentMethod: selectedPayment,
+    deliverySlot: document.getElementById('del-slot').value,
+    notes: document.getElementById('del-notes').value.trim()
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Placing order…';
+
+  try {
+    const { order } = await api.orders.place(orderData);
+    cartData = [];
+
+    // Show success
+    goToStep(4);
+    document.getElementById('order-confirm-info').innerHTML = `
+      <div class="summary-row"><span>Order ID</span><strong>#${order._id.slice(-8).toUpperCase()}</strong></div>
+      <div class="summary-row"><span>Items</span><span>${order.items.length}</span></div>
+      <div class="summary-row"><span>Total</span><strong style="color:var(--leaf)">₹${order.totalAmount}</strong></div>
+      <div class="summary-row"><span>Payment</span><span>${order.paymentMethod}</span></div>
+      <div class="summary-row"><span>Delivery to</span><span>${deliveryAddress.city}</span></div>
+    `;
+    document.getElementById('step-indicator').style.display = 'none';
+    document.getElementById('summary-col').style.display = 'none';
+
+    toast.success('Order placed! 🎉');
+  } catch (err) {
+    toast.error(err.message);
+    btn.disabled = false;
+    btn.textContent = '✅ Place Order';
+  }
+}
+</script>
+</body>
+</html>

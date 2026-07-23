@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop – LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .shop-layout { display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; padding: 2rem 0; }
+    .filter-sidebar { position: sticky; top: 80px; height: fit-content; background: white; border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); }
+    .filter-sidebar h4 { margin-bottom: .75rem; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400); }
+    .filter-section { margin-bottom: 1.5rem; }
+    .filter-option { display: flex; align-items: center; gap: .5rem; padding: .35rem 0; cursor: pointer; font-size: .9rem; }
+    .filter-option input[type=checkbox] { accent-color: var(--leaf); width: 15px; height: 15px; }
+    .shop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
+    .results-count { font-size: .88rem; color: var(--gray-400); }
+    .sort-bar { display: flex; align-items: center; gap: .75rem; }
+    .mobile-filter-btn { display: none; }
+    @media (max-width: 800px) {
+      .shop-layout { grid-template-columns: 1fr; }
+      .filter-sidebar { display: none; }
+      .filter-sidebar.mobile-open { display: block; position: fixed; top: 0; left: 0; bottom: 0; width: 280px; z-index: 300; overflow-y: auto; border-radius: 0; box-shadow: var(--shadow-lg); }
+      .mobile-filter-btn { display: inline-flex; }
+      .filter-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 299; }
+      .filter-overlay.show { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="../index.html" class="navbar-brand">🧺 LocalBasket</a>
+    <button class="navbar-toggle" onclick="document.getElementById('main-nav').classList.toggle('open')">☰</button>
+    <ul class="navbar-nav" id="main-nav">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="products.html" class="active">Shop</a></li>
+      <li><a href="farmers.html">Farmers</a></li>
+      <li id="nav-login"><a href="login.html">Login</a></li>
+      <li id="nav-dash" class="hidden"><a href="#" id="nav-dash-link">Dashboard</a></li>
+      <li id="nav-logout" class="hidden"><a href="#" onclick="doLogout()">Logout</a></li>
+    </ul>
+    <a href="cart.html" class="navbar-cart">🛒 Cart <span class="cart-badge hidden" id="cart-count">0</span></a>
+  </div>
+</nav>
+
+<!-- Mobile filter overlay -->
+<div class="filter-overlay" id="filter-overlay" onclick="closeFilters()"></div>
+
+<div class="container">
+  <!-- Search bar -->
+  <div style="padding: 1.25rem 0 0">
+    <div class="search-bar">
+      <select id="search-city">
+        <option value="">All Cities</option>
+        <option>Kharagpur</option><option>Kolkata</option><option>Delhi</option>
+        <option>Mumbai</option><option>Bangalore</option><option>Chennai</option>
+      </select>
+      <input type="text" id="search-input" placeholder="Search products…" autocomplete="off">
+      <button class="btn btn-primary" onclick="applySearch()">🔍 Search</button>
+    </div>
+  </div>
+
+  <div class="shop-layout">
+    <!-- Filter Sidebar -->
+    <aside class="filter-sidebar" id="filter-sidebar">
+      <div class="flex items-center justify-between mb-2">
+        <h3 style="font-family:var(--ff-display)">Filters</h3>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear All</button>
+      </div>
+
+      <div class="filter-section">
+        <h4>Category</h4>
+        <label class="filter-option"><input type="checkbox" name="category" value="vegetables"> 🥦 Vegetables</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="fruits"> 🍎 Fruits</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="grains"> 🌾 Grains</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="dairy"> 🥛 Dairy</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="eggs"> 🥚 Eggs</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="herbs"> 🌿 Herbs</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="spices"> 🌶️ Spices</label>
+        <label class="filter-option"><input type="checkbox" name="category" value="other"> 🧺 Other</label>
+      </div>
+
+      <div class="filter-section">
+        <h4>Type</h4>
+        <label class="filter-option"><input type="checkbox" id="filter-organic"> 🌿 Organic Only</label>
+      </div>
+
+      <div class="filter-section">
+        <h4>Price Range</h4>
+        <div class="flex gap-1" style="margin-top:.5rem">
+          <input type="number" class="form-control" id="price-min" placeholder="Min ₹" style="font-size:.85rem">
+          <input type="number" class="form-control" id="price-max" placeholder="Max ₹" style="font-size:.85rem">
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="applyFilters(); closeFilters()">Apply Filters</button>
+    </aside>
+
+    <!-- Products Area -->
+    <div>
+      <div class="shop-header">
+        <div>
+          <span class="results-count" id="results-count">Loading products…</span>
+        </div>
+        <div class="sort-bar">
+          <button class="btn btn-ghost btn-sm mobile-filter-btn" onclick="openFilters()">⚙️ Filters</button>
+          <select class="form-control" id="sort-select" onchange="applyFilters()" style="width:auto;font-size:.85rem">
+            <option value="">Latest</option>
+            <option value="price_asc">Price ↑</option>
+            <option value="price_desc">Price ↓</option>
+            <option value="rating">Top Rated</option>
+            <option value="popular">Popular</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Active filter chips -->
+      <div id="active-filters" class="flex gap-1 mb-2" style="flex-wrap:wrap"></div>
+
+      <div class="products-grid" id="products-grid">
+        ${Array(12).fill(0).map(()=>`<div class="card"><div class="skeleton" style="height:180px"></div><div class="card-body"><div class="skeleton mb-1" style="height:18px;width:70%"></div><div class="skeleton" style="height:14px;width:50%"></div></div></div>`).join('')}
+      </div>
+
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Product Quick View Modal -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <h3 id="modal-product-name">Product</h3>
+      <button class="modal-close" onclick="document.getElementById('product-modal').classList.remove('open')">✕</button>
+    </div>
+    <div id="modal-product-content"></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+const catIcons = { vegetables:'🥦', fruits:'🍎', grains:'🌾', dairy:'🥛', eggs:'🥚', herbs:'🌿', spices:'🌶️', other:'🧺' };
+let currentPage = 1;
+let totalPages = 1;
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  // Read URL params
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('category')) {
+    const cb = document.querySelector(`input[name=category][value="${params.get('category')}"]`);
+    if (cb) cb.checked = true;
+  }
+  if (params.get('city')) document.getElementById('search-city').value = params.get('city');
+  if (params.get('search')) document.getElementById('search-input').value = params.get('search');
+
+  updateNav();
+  loadProducts();
+});
+
+function updateNav() {
+  if (api.isLoggedIn()) {
+    const user = api.getUser();
+    document.getElementById('nav-login').classList.add('hidden');
+    document.getElementById('nav-logout').classList.remove('hidden');
+    document.getElementById('nav-dash').classList.remove('hidden');
+    const link = document.getElementById('nav-dash-link');
+    link.textContent = '👤 ' + user.name.split(' ')[0];
+    link.href = nav.dashboardPath(user);
+    if (user.role === 'customer') updateCartCount();
+  }
+}
+
+async function updateCartCount() {
+  try {
+    const { cart } = await api.cart.get();
+    const count = cart.reduce((a, i) => a + i.quantity, 0);
+    if (count > 0) {
+      const el = document.getElementById('cart-count');
+      el.textContent = count; el.classList.remove('hidden');
+    }
+  } catch {}
+}
+
+async function loadProducts() {
+  const params = buildParams();
+  const grid = document.getElementById('products-grid');
+
+  try {
+    const res = await api.products.getAll(params);
+    totalPages = res.pages;
+    currentPage = res.currentPage;
+    document.getElementById('results-count').textContent = `${res.total} product${res.total!==1?'s':''} found`;
+    renderGrid(res.products);
+    renderPagination();
+    renderActiveFilters(params);
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🥬</div><h3>No products found</h3><p>${err.message}</p></div>`;
+    document.getElementById('results-count').textContent = '0 products found';
+  }
+}
+
+function buildParams() {
+  const cats = [...document.querySelectorAll('input[name=category]:checked')].map(el => el.value);
+  const params = {
+    page: currentPage,
+    limit: 12,
+    sort: document.getElementById('sort-select').value
+  };
+  if (cats.length === 1) params.category = cats[0]; // API supports 1 category at a time
+  if (document.getElementById('filter-organic').checked) params.organic = 'true';
+  const city = document.getElementById('search-city').value;
+  if (city) params.city = city;
+  const search = document.getElementById('search-input').value.trim();
+  if (search) params.search = search;
+  const minP = document.getElementById('price-min').value;
+  const maxP = document.getElementById('price-max').value;
+  if (minP) params.minPrice = minP;
+  if (maxP) params.maxPrice = maxP;
+  return params;
+}
+
+function renderGrid(products) {
+  const grid = document.getElementById('products-grid');
+  if (!products.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🥬</div><h3>No products match your filters</h3><p>Try clearing some filters or searching differently.</p><button class="btn btn-outline mt-2" onclick="clearFilters()">Clear Filters</button></div>`;
+    return;
+  }
+  grid.innerHTML = products.map(p => `
+    <div class="card product-card">
+      <div class="product-img-wrap" onclick="quickView('${p._id}')">
+        ${p.images && p.images[0]
+          ? `<img src="${p.images[0]}" alt="${p.name}" loading="lazy">`
+          : `<div class="product-img-placeholder">${catIcons[p.category]||'🥬'}<span style="font-size:.72rem;margin-top:.3rem">${p.category}</span></div>`
+        }
+        ${p.isOrganic ? '<span class="product-badge organic">Organic</span>' : ''}
+        ${!p.isAvailable||p.quantity===0 ? '<span class="product-badge out-of-stock">Out of Stock</span>' : ''}
+      </div>
+      <div class="card-body">
+        <div class="product-title" onclick="quickView('${p._id}')" style="cursor:pointer">${p.name}</div>
+        <div class="product-farmer">📍 ${p.location?.city || p.farmer?.location?.city || ''} · by ${p.farmer?.farmName||p.farmer?.name||'Farmer'}</div>
+        <div class="flex items-center justify-between mt-1">
+          <div><span class="product-price">₹${p.price}</span><span class="product-unit">/${p.unit}</span></div>
+          ${p.averageRating > 0 ? `<span style="color:var(--wheat);font-size:.8rem">★ ${p.averageRating}</span>` : ''}
+        </div>
+        <div class="mt-1">
+          ${p.isAvailable && p.quantity > 0
+            ? `<button class="btn btn-primary btn-sm w-full" onclick="addToCart('${p._id}', this)">🛒 Add to Cart</button>`
+            : `<button class="btn btn-ghost btn-sm w-full" disabled>Out of Stock</button>`
+          }
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPagination() {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  if (currentPage > 1) html += `<button class="page-btn" onclick="goPage(${currentPage-1})">‹</button>`;
+  for (let i = Math.max(1, currentPage-2); i <= Math.min(totalPages, currentPage+2); i++) {
+    html += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  if (currentPage < totalPages) html += `<button class="page-btn" onclick="goPage(${currentPage+1})">›</button>`;
+  el.innerHTML = html;
+}
+
+function renderActiveFilters(params) {
+  const el = document.getElementById('active-filters');
+  const chips = [];
+  if (params.category) chips.push({ label: catIcons[params.category] + ' ' + params.category, key: 'category' });
+  if (params.organic) chips.push({ label: '🌿 Organic', key: 'organic' });
+  if (params.city) chips.push({ label: '📍 ' + params.city, key: 'city' });
+  if (params.search) chips.push({ label: '🔍 ' + params.search, key: 'search' });
+  el.innerHTML = chips.map(c => `
+    <span class="filter-chip active" style="font-size:.78rem" onclick="removeFilter('${c.key}')">
+      ${c.label} ✕
+    </span>
+  `).join('');
+}
+
+function removeFilter(key) {
+  if (key === 'category') document.querySelectorAll('input[name=category]').forEach(cb => cb.checked = false);
+  if (key === 'organic') document.getElementById('filter-organic').checked = false;
+  if (key === 'city') document.getElementById('search-city').value = '';
+  if (key === 'search') document.getElementById('search-input').value = '';
+  currentPage = 1;
+  loadProducts();
+}
+
+function goPage(p) {
+  currentPage = p;
+  loadProducts();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function applyFilters() { currentPage = 1; loadProducts(); }
+function applySearch() { currentPage = 1; loadProducts(); }
+
+function clearFilters() {
+  document.querySelectorAll('input[name=category]').forEach(cb => cb.checked = false);
+  document.getElementById('filter-organic').checked = false;
+  document.getElementById('price-min').value = '';
+  document.getElementById('price-max').value = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-city').value = '';
+  document.getElementById('sort-select').value = '';
+  currentPage = 1;
+  loadProducts();
+}
+
+function openFilters() {
+  document.getElementById('filter-sidebar').classList.add('mobile-open');
+  document.getElementById('filter-overlay').classList.add('show');
+}
+function closeFilters() {
+  document.getElementById('filter-sidebar').classList.remove('mobile-open');
+  document.getElementById('filter-overlay').classList.remove('show');
+}
+
+async function quickView(id) {
+  try {
+    const { product: p } = await api.products.getById(id);
+    document.getElementById('modal-product-name').textContent = p.name;
+    document.getElementById('modal-product-content').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
+        <div style="background:var(--gray-100);border-radius:var(--radius);aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:4rem">
+          ${p.images && p.images[0] ? `<img src="${p.images[0]}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius)">` : (catIcons[p.category]||'🥬')}
+        </div>
+        <div>
+          <div class="flex gap-1 mb-1">
+            ${p.isOrganic ? '<span class="badge badge-green">🌿 Organic</span>' : ''}
+            <span class="badge badge-gray">${catIcons[p.category]||''} ${p.category}</span>
+          </div>
+          <div style="font-size:1.6rem;font-weight:700;color:var(--leaf)">₹${p.price}<span style="font-size:.9rem;color:var(--gray-400);font-weight:400">/${p.unit}</span></div>
+          ${p.averageRating > 0 ? `<div style="color:var(--wheat);margin:.25rem 0">★ ${p.averageRating} <span style="color:var(--gray-400);font-size:.82rem">(${p.ratings.length} reviews)</span></div>` : ''}
+          <p style="font-size:.88rem;color:var(--bark);margin:.6rem 0">${p.description || 'Fresh from the farm.'}</p>
+          <div class="text-sm text-muted mb-1">📦 Stock: ${p.quantity} ${p.unit}</div>
+          ${p.location?.city ? `<div class="text-sm text-muted mb-1">📍 ${p.location.city}${p.location.state?', '+p.location.state:''}</div>` : ''}
+          <div style="font-size:.85rem;color:var(--earth);margin-bottom:1rem">🌾 by <strong>${p.farmer?.farmName||p.farmer?.name||'Farmer'}</strong></div>
+          <div class="flex gap-1">
+            ${p.isAvailable && p.quantity > 0
+              ? `<button class="btn btn-primary" onclick="addToCart('${p._id}', this); document.getElementById('product-modal').classList.remove('open')">🛒 Add to Cart</button>`
+              : `<button class="btn btn-ghost" disabled>Out of Stock</button>`
+            }
+            <a href="product.html?id=${p._id}" class="btn btn-outline">View Full Page</a>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('product-modal').classList.add('open');
+  } catch (err) { toast.error('Could not load product details.'); }
+}
+
+async function addToCart(productId, btn) {
+  if (!api.isLoggedIn()) { window.location.href = 'login.html'; return; }
+  const user = api.getUser();
+  if (user.role !== 'customer') { toast.info('Only customers can add to cart.'); return; }
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await api.cart.add(productId, 1);
+    toast.success('Added to cart! 🛒');
+    updateCartCount();
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+  }
+}
+
+function doLogout() { api.clearAuth(); window.location.href = '../index.html'; }
+
+document.getElementById('search-input').addEventListener('keypress', e => { if(e.key==='Enter') applySearch(); });
+</script>
+</body>
+</html>

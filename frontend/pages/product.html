@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product – LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .product-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin: 2rem 0; align-items: start; }
+    .product-main-img {
+      aspect-ratio: 1;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      background: var(--gray-100);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 6rem;
+    }
+    .product-main-img img { width: 100%; height: 100%; object-fit: cover; }
+    .review-card { background: var(--gray-50); border-radius: var(--radius); padding: 1rem; margin-bottom: .75rem; }
+    .review-stars { color: var(--wheat); font-size: 1rem; }
+    @media (max-width: 700px) {
+      .product-detail-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="../index.html" class="navbar-brand">🧺 LocalBasket</a>
+    <ul class="navbar-nav">
+      <li><a href="products.html">← All Products</a></li>
+    </ul>
+    <a href="cart.html" class="navbar-cart">🛒 Cart <span class="cart-badge hidden" id="cart-count">0</span></a>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="product-detail">
+    <div style="text-align:center;padding:5rem">
+      <div class="spinner" style="margin:auto"></div>
+      <p class="text-muted mt-2">Loading product…</p>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+const catIcons = { vegetables:'🥦', fruits:'🍎', grains:'🌾', dairy:'🥛', eggs:'🥚', herbs:'🌿', spices:'🌶️', other:'🧺' };
+const productId = new URLSearchParams(window.location.search).get('id');
+
+if (!productId) window.location.href = 'products.html';
+
+// Update cart count
+if (api.isLoggedIn() && api.getUser().role === 'customer') {
+  api.cart.get().then(({ cart }) => {
+    const count = cart.reduce((a, i) => a + i.quantity, 0);
+    if (count > 0) { document.getElementById('cart-count').textContent = count; document.getElementById('cart-count').classList.remove('hidden'); }
+  }).catch(() => {});
+}
+
+async function loadProduct() {
+  try {
+    const { product: p } = await api.products.getById(productId);
+    document.title = p.name + ' – LocalBasket';
+
+    document.getElementById('product-detail').innerHTML = `
+      <nav style="padding:1rem 0;font-size:.85rem;color:var(--gray-400)">
+        <a href="products.html" style="color:var(--gray-400)">Shop</a> › 
+        <a href="products.html?category=${p.category}" style="color:var(--gray-400);text-transform:capitalize">${p.category}</a> › 
+        <span style="color:var(--soil)">${p.name}</span>
+      </nav>
+
+      <div class="product-detail-grid">
+        <div class="product-main-img">
+          ${p.images && p.images[0]
+            ? `<img src="${p.images[0]}" alt="${p.name}">`
+            : (catIcons[p.category] || '🥬')
+          }
+        </div>
+        <div>
+          <div class="flex gap-1 mb-2" style="flex-wrap:wrap">
+            <span class="badge badge-gray">${catIcons[p.category]||''} ${p.category}</span>
+            ${p.isOrganic ? '<span class="badge badge-green">🌿 Certified Organic</span>' : ''}
+            ${p.isAvailable && p.quantity > 0
+              ? '<span class="badge badge-green">✓ In Stock</span>'
+              : '<span class="badge badge-red">Out of Stock</span>'
+            }
+          </div>
+
+          <h1 style="margin-bottom:.5rem">${p.name}</h1>
+
+          ${p.averageRating > 0 ? `
+            <div style="color:var(--wheat);font-size:1rem;margin-bottom:.75rem">
+              ${'★'.repeat(Math.floor(p.averageRating))}${'☆'.repeat(5-Math.floor(p.averageRating))}
+              <span style="color:var(--gray-400);font-size:.85rem;margin-left:.3rem">${p.averageRating} (${p.ratings.length} reviews)</span>
+            </div>
+          ` : ''}
+
+          <div style="font-size:2rem;font-weight:700;color:var(--leaf);margin-bottom:.25rem">
+            ₹${p.price}
+            <span style="font-size:1rem;color:var(--gray-400);font-weight:400">/ ${p.unit}</span>
+          </div>
+
+          ${p.description ? `<p style="color:var(--bark);margin:1rem 0;line-height:1.7">${p.description}</p>` : ''}
+
+          <div style="background:var(--gray-50);border-radius:var(--radius);padding:1rem;margin:1rem 0;display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+            <div style="font-size:.85rem"><span style="color:var(--gray-400)">Available:</span> <strong>${p.quantity} ${p.unit}</strong></div>
+            <div style="font-size:.85rem"><span style="color:var(--gray-400)">Sold:</span> <strong>${p.totalSold || 0} ${p.unit}</strong></div>
+            ${p.harvestDate ? `<div style="font-size:.85rem"><span style="color:var(--gray-400)">Harvested:</span> <strong>${fmt.date(p.harvestDate)}</strong></div>` : ''}
+            ${p.location?.city ? `<div style="font-size:.85rem"><span style="color:var(--gray-400)">Location:</span> <strong>${p.location.city}</strong></div>` : ''}
+          </div>
+
+          <!-- Farmer Info -->
+          <div style="background:white;border:1.5px solid var(--gray-100);border-radius:var(--radius);padding:1rem;margin-bottom:1.25rem">
+            <div class="flex items-center gap-2">
+              <div style="width:44px;height:44px;border-radius:50%;background:var(--leaf);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;flex-shrink:0">
+                ${(p.farmer?.name || 'F')[0]}
+              </div>
+              <div>
+                <div style="font-weight:700">${p.farmer?.farmName || p.farmer?.name || 'Local Farmer'}</div>
+                <div style="font-size:.8rem;color:var(--bark)">${p.farmer?.name || ''}</div>
+                ${p.farmer?.location?.city ? `<div style="font-size:.78rem;color:var(--gray-400)">📍 ${p.farmer.location.city}</div>` : ''}
+              </div>
+              <a href="products.html?farmer=${p.farmer?._id}" class="btn btn-ghost btn-sm" style="margin-left:auto">View Farm</a>
+            </div>
+            ${p.farmer?.farmDescription ? `<p style="font-size:.82rem;color:var(--bark);margin-top:.75rem;line-height:1.5">${p.farmer.farmDescription}</p>` : ''}
+          </div>
+
+          <!-- Add to Cart -->
+          <div class="flex gap-1" id="cart-section">
+            ${p.isAvailable && p.quantity > 0
+              ? `<input type="number" id="qty-input" value="1" min="1" max="${p.quantity}" style="width:72px;text-align:center;border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:.55rem;font-family:var(--ff-body);font-size:.95rem">
+                 <button class="btn btn-primary btn-lg" onclick="addToCart('${p._id}')" style="flex:1">🛒 Add to Cart</button>`
+              : `<button class="btn btn-ghost btn-lg" style="flex:1" disabled>Out of Stock</button>`
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Reviews -->
+      <div style="margin:2rem 0">
+        <div class="section-divider"><h2>Customer Reviews</h2></div>
+        ${p.ratings && p.ratings.length
+          ? p.ratings.map(r => `
+            <div class="review-card">
+              <div class="flex items-center gap-2 mb-1">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--leaf);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0">
+                  ${r.user?.name?.[0] || '?'}
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:.9rem">${r.user?.name || 'Customer'}</div>
+                  <div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+                </div>
+                <div style="margin-left:auto;font-size:.78rem;color:var(--gray-400)">${fmt.date(r.createdAt)}</div>
+              </div>
+              ${r.review ? `<p style="font-size:.88rem;color:var(--bark)">${r.review}</p>` : ''}
+            </div>
+          `).join('')
+          : '<p class="text-muted text-sm">No reviews yet. Be the first to review!</p>'
+        }
+
+        ${api.isLoggedIn() && api.getUser().role === 'customer' ? `
+          <div style="background:white;border-radius:var(--radius);padding:1.25rem;margin-top:1rem;border:1.5px solid var(--gray-100)">
+            <h4 style="margin-bottom:.75rem">Write a Review</h4>
+            <div class="form-group">
+              <label class="form-label">Rating</label>
+              <div id="star-rating" style="font-size:1.75rem;cursor:pointer;letter-spacing:.2rem">
+                <span onclick="setRating(1)">☆</span>
+                <span onclick="setRating(2)">☆</span>
+                <span onclick="setRating(3)">☆</span>
+                <span onclick="setRating(4)">☆</span>
+                <span onclick="setRating(5)">☆</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Your Review (optional)</label>
+              <textarea class="form-control" id="review-text" rows="2" placeholder="Share your experience…"></textarea>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="submitReview()">Submit Review</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('product-detail').innerHTML = `
+      <div class="empty-state" style="padding:5rem 0">
+        <div class="empty-icon">⚠️</div>
+        <h3>Product not found</h3>
+        <p>${err.message}</p>
+        <a href="products.html" class="btn btn-primary mt-2">← Browse Products</a>
+      </div>
+    `;
+  }
+}
+
+let selectedRating = 0;
+function setRating(n) {
+  selectedRating = n;
+  const stars = document.querySelectorAll('#star-rating span');
+  stars.forEach((s, i) => { s.textContent = i < n ? '★' : '☆'; s.style.color = i < n ? 'var(--wheat)' : 'inherit'; });
+}
+
+async function submitReview() {
+  if (!selectedRating) { toast.error('Please select a rating.'); return; }
+  try {
+    await api.products.addReview(productId, { rating: selectedRating, review: document.getElementById('review-text').value.trim() });
+    toast.success('Review submitted! Thank you.');
+    loadProduct();
+  } catch (err) { toast.error(err.message); }
+}
+
+async function addToCart(id) {
+  if (!api.isLoggedIn()) { window.location.href = 'login.html'; return; }
+  const user = api.getUser();
+  if (user.role !== 'customer') { toast.info('Only customers can add items to cart.'); return; }
+  const qty = parseInt(document.getElementById('qty-input')?.value || '1');
+  try {
+    await api.cart.add(id, qty);
+    toast.success(`Added ${qty} to cart! 🛒`);
+    const count = await api.cart.get().then(r => r.cart.reduce((a,i)=>a+i.quantity,0));
+    if (count > 0) { document.getElementById('cart-count').textContent = count; document.getElementById('cart-count').classList.remove('hidden'); }
+  } catch (err) { toast.error(err.message); }
+}
+
+loadProduct();
+</script>
+</body>
+</html>

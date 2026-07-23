@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Farmers – LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .farmers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+    .farmer-card {
+      background: white; border-radius: var(--radius-lg); overflow: hidden;
+      box-shadow: var(--shadow-sm); border: 1px solid var(--gray-100);
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .farmer-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+    .farmer-card-banner {
+      height: 90px;
+      background: linear-gradient(135deg, var(--earth), var(--bark));
+      position: relative;
+      display: flex; align-items: flex-end;
+      padding: 0 1.25rem .5rem;
+    }
+    .farmer-avatar {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: var(--leaf);
+      color: white;
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      border: 3px solid white;
+      position: absolute;
+      bottom: -25px;
+      left: 1.25rem;
+    }
+    .farmer-card-body { padding: 2.25rem 1.25rem 1.25rem; }
+    .farmer-name { font-family: var(--ff-display); font-size: 1.1rem; margin-bottom: .15rem; }
+    .farmer-farm { font-size: .85rem; color: var(--bark); margin-bottom: .4rem; }
+    .farmer-location { font-size: .8rem; color: var(--gray-400); margin-bottom: .75rem; display: flex; align-items: center; gap: .3rem; }
+    .farmer-stats { display: flex; gap: 1.25rem; padding: .75rem 0; border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100); margin-bottom: .75rem; }
+    .farmer-stat { text-align: center; }
+    .farmer-stat .val { font-size: 1.1rem; font-weight: 700; color: var(--soil); font-family: var(--ff-display); }
+    .farmer-stat .lbl { font-size: .7rem; color: var(--gray-400); }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="../index.html" class="navbar-brand">🧺 LocalBasket</a>
+    <ul class="navbar-nav">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="products.html">Shop</a></li>
+      <li><a href="farmers.html" class="active">Farmers</a></li>
+      <li id="nav-login"><a href="login.html">Login</a></li>
+      <li id="nav-dash" class="hidden"><a href="#" id="nav-dash-link">Dashboard</a></li>
+      <li id="nav-logout" class="hidden"><a href="#" onclick="api.clearAuth();window.location='../index.html'">Logout</a></li>
+    </ul>
+    <a href="cart.html" class="navbar-cart">🛒 Cart</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div style="background:var(--earth);padding:3rem 0;text-align:center">
+  <div class="container">
+    <h1 style="color:var(--straw);margin-bottom:.75rem">Meet Your Local Farmers</h1>
+    <p style="color:var(--gray-200);max-width:520px;margin:0 auto 1.5rem">These are the hardworking farmers who grow your food. Buy directly from them and support your local agricultural community.</p>
+    <div class="search-bar" style="max-width:480px;margin:0 auto">
+      <input type="text" id="search-input" placeholder="Search by city, farm name…">
+      <button class="btn btn-primary" onclick="loadFarmers()">Search</button>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="flex items-center justify-between mb-3" style="flex-wrap:wrap;gap:.75rem">
+      <div>
+        <h2>Farmers Near You</h2>
+        <p class="text-muted text-sm" id="farmer-count">Loading…</p>
+      </div>
+      <div class="flex gap-1">
+        <select class="form-control" id="city-filter" onchange="loadFarmers()" style="width:auto;font-size:.85rem">
+          <option value="">All Cities</option>
+          <option>Kharagpur</option><option>Kolkata</option><option>Delhi</option>
+          <option>Mumbai</option><option>Bangalore</option><option>Chennai</option><option>Pune</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="farmers-grid" id="farmers-grid">
+      ${Array(6).fill(0).map(()=>`<div class="card"><div class="skeleton" style="height:90px"></div><div class="card-body" style="padding-top:2rem"><div class="skeleton mb-1" style="height:20px;width:60%"></div><div class="skeleton" style="height:14px;width:80%"></div></div></div>`).join('')}
+    </div>
+  </div>
+</section>
+
+<script src="../js/api.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  if (api.isLoggedIn()) {
+    const user = api.getUser();
+    document.getElementById('nav-login').classList.add('hidden');
+    document.getElementById('nav-logout').classList.remove('hidden');
+    document.getElementById('nav-dash').classList.remove('hidden');
+    const link = document.getElementById('nav-dash-link');
+    link.textContent = '👤 ' + user.name.split(' ')[0];
+    link.href = nav.dashboardPath(user);
+  }
+  loadFarmers();
+});
+
+async function loadFarmers() {
+  const grid = document.getElementById('farmers-grid');
+  const params = {};
+  const city = document.getElementById('city-filter').value;
+  const search = document.getElementById('search-input').value.trim();
+  if (city) params.city = city;
+
+  try {
+    const { farmers } = await api.users.getFarmers(params);
+    const filtered = search
+      ? farmers.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || (f.farmName||'').toLowerCase().includes(search.toLowerCase()) || (f.location?.city||'').toLowerCase().includes(search.toLowerCase()))
+      : farmers;
+
+    document.getElementById('farmer-count').textContent = `${filtered.length} farmer${filtered.length!==1?'s':''} found`;
+
+    if (!filtered.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🌾</div><h3>No farmers found</h3><p>Try a different city or search term.</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(f => `
+      <div class="farmer-card">
+        <div class="farmer-card-banner">
+          <div class="farmer-avatar">${f.name[0].toUpperCase()}</div>
+        </div>
+        <div class="farmer-card-body">
+          <div class="farmer-name">${f.farmName || f.name}</div>
+          <div class="farmer-farm">${f.farmName ? '👨‍🌾 ' + f.name : ''}</div>
+          <div class="farmer-location">📍 ${f.location?.city || 'Local Area'}${f.location?.state ? ', ' + f.location.state : ''}</div>
+          ${f.farmDescription ? `<p style="font-size:.82rem;color:var(--bark);margin-bottom:.75rem;line-height:1.5">${f.farmDescription.slice(0,100)}${f.farmDescription.length>100?'…':''}</p>` : ''}
+          <div class="farmer-stats">
+            <div class="farmer-stat"><div class="val">${f.productsCount || 0}</div><div class="lbl">Products</div></div>
+            ${f.rating > 0 ? `<div class="farmer-stat"><div class="val">★ ${f.rating}</div><div class="lbl">Rating</div></div>` : ''}
+            ${f.reviewCount > 0 ? `<div class="farmer-stat"><div class="val">${f.reviewCount}</div><div class="lbl">Reviews</div></div>` : ''}
+          </div>
+          <a href="products.html?farmer=${f._id}" class="btn btn-primary btn-sm w-full">🥬 View Products</a>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Error loading farmers</h3><p>${err.message}</p></div>`;
+  }
+}
+
+document.getElementById('search-input').addEventListener('keypress', e => { if(e.key==='Enter') loadFarmers(); });
+</script>
+</body>
+</html>

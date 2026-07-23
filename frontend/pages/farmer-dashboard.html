@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farmer Dashboard – LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .view { display: none; }
+    .view.active { display: block; }
+    .product-actions { display: flex; gap: .4rem; }
+    .nav-user-name {
+      color: var(--straw);
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    .logout-link {
+      color: var(--gray-400);
+    }
+    .img-upload-area {
+      border: 2px dashed var(--gray-200);
+      border-radius: var(--radius);
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition);
+      color: var(--gray-400);
+      font-size: .9rem;
+    }
+    .img-upload-area:hover { border-color: var(--leaf); color: var(--leaf); }
+    .order-timeline { display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; }
+    .timeline-item { display: flex; gap: .75rem; align-items: flex-start; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--leaf); flex-shrink: 0; margin-top: .35rem; }
+    .timeline-dot.pending { background: var(--gray-200); }
+    .sidebar-bottom { position: absolute; bottom: 1rem; left: 1rem; right: 1rem; }
+    .greeting-section { margin-bottom: 1.5rem; }
+    .recent-orders-section { margin-top: 2rem; }
+    .orders-loading { text-align: center; padding: 2rem; }
+    .products-loading { text-align: center; padding: 3rem; }    .sidebar-bottom-container { position: absolute; bottom: 1rem; left: 1rem; right: 1rem; }
+    .greeting-title { margin-bottom: 1.5rem; }
+    .recent-orders-container { margin-top: 2rem; }
+    .orders-spinner-container { text-align: center; padding: 2rem; }
+    .greeting-section-title { margin-bottom: 1.5rem; }
+    .organic-checkbox-label { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+    .organic-checkbox-label input { width: 16px; height: 16px; accent-color: var(--leaf); }
+    .organic-checkbox-label .form-label { margin: 0; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="container">
+    <a href="../index.html" class="navbar-brand">🧺 LocalBasket</a>
+    <ul class="navbar-nav">
+      <li><span id="nav-user-name" class="nav-user-name"></span></li>
+      <li><a href="#" onclick="logout()" class="logout-link">Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" id="side-avatar">F</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="side-name">Farmer</div>
+        <div class="sidebar-user-role">🌾 Farmer</div>
+      </div>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="#" class="active" onclick="showView('overview', this)"><span class="nav-icon">📊</span> Overview</a></li>
+      <li><a href="#" onclick="showView('products', this)"><span class="nav-icon">🥬</span> My Products</a></li>
+      <li><a href="#" onclick="showView('add-product', this)"><span class="nav-icon">➕</span> Add Product</a></li>
+      <li><a href="#" onclick="showView('orders', this)"><span class="nav-icon">📦</span> Orders</a></li>
+      <li><a href="#" onclick="showView('profile', this)"><span class="nav-icon">👤</span> Profile</a></li>
+    </ul>
+    <div style="position:absolute;bottom:1rem;left:1rem;right:1rem">
+      <a href="../pages/products.html" class="btn btn-ghost btn-sm btn-block">🏪 View Marketplace</a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Overview -->
+    <div class="view active" id="view-overview">
+      <h2 style="margin-bottom:1.5rem">Good morning, <span id="farmer-greeting">Farmer</span> 🌅</h2>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-val" id="stat-products">–</div><div class="stat-label">Products Listed</div></div>
+        <div class="stat-card accent-wheat"><div class="stat-val" id="stat-orders">–</div><div class="stat-label">Total Orders</div></div>
+        <div class="stat-card accent-sky"><div class="stat-val" id="stat-pending">–</div><div class="stat-label">Pending Orders</div></div>
+        <div class="stat-card accent-mango"><div class="stat-val" id="stat-revenue">–</div><div class="stat-label">Total Revenue</div></div>
+      </div>
+
+      <div style="margin-top:2rem">
+        <div class="section-divider"><h3>Recent Orders</h3></div>
+        <div id="recent-orders-list">
+          <div style="text-align:center;padding:2rem"><div class="spinner" style="margin:auto"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Products -->
+    <div class="view" id="view-products">
+      <div class="flex items-center justify-between mb-3">
+        <h2>My Products</h2>
+        <button class="btn btn-primary btn-sm" onclick="showView('add-product', null)">+ Add Product</button>
+      </div>
+      <div id="farmer-products-list">
+        <div style="text-align:center;padding:3rem"><div class="spinner" style="margin:auto"></div></div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Product -->
+    <div class="view" id="view-add-product">
+      <div class="flex items-center gap-2 mb-3">
+        <button class="btn btn-ghost btn-sm" onclick="showView('products', null)">← Back</button>
+        <h2 id="product-form-title">Add New Product</h2>
+      </div>
+      <div style="background:white;border-radius:var(--radius-lg);padding:2rem;box-shadow:var(--shadow-sm)">
+        <input type="hidden" id="edit-product-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Product Name *</label>
+            <input type="text" class="form-control" id="prod-name" placeholder="e.g. Fresh Tomatoes">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select class="form-control" id="prod-category">
+              <option value="">Select category</option>
+              <option value="vegetables">🥦 Vegetables</option>
+              <option value="fruits">🍎 Fruits</option>
+              <option value="grains">🌾 Grains</option>
+              <option value="dairy">🥛 Dairy</option>
+              <option value="eggs">🥚 Eggs</option>
+              <option value="herbs">🌿 Herbs</option>
+              <option value="spices">🌶️ Spices</option>
+              <option value="other">🧺 Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Price (₹) *</label>
+            <input type="number" class="form-control" id="prod-price" placeholder="e.g. 40" min="0" step="0.5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit *</label>
+            <select class="form-control" id="prod-unit">
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="litre">Litre</option>
+              <option value="ml">ml</option>
+              <option value="piece">Piece</option>
+              <option value="dozen">Dozen</option>
+              <option value="bundle">Bundle</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Available Quantity *</label>
+            <input type="number" class="form-control" id="prod-quantity" placeholder="e.g. 50" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Harvest Date</label>
+            <input type="date" class="form-control" id="prod-harvest">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" id="prod-description" placeholder="Describe your product, growing method, freshness…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" class="form-control" id="prod-city" placeholder="Where is the farm?">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pincode</label>
+            <input type="text" class="form-control" id="prod-pincode" placeholder="6-digit pincode">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Image URL (optional)</label>
+          <input type="text" class="form-control" id="prod-image" placeholder="https://example.com/image.jpg">
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" id="prod-organic" style="width:16px;height:16px;accent-color:var(--leaf)">
+            <span class="form-label" style="margin:0">🌿 This is an organic product</span>
+          </label>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-primary" id="save-product-btn" onclick="saveProduct()">💾 Save Product</button>
+          <button class="btn btn-ghost" onclick="resetProductForm()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orders -->
+    <div class="view" id="view-orders">
+      <div class="flex items-center justify-between mb-3">
+        <h2>Orders</h2>
+        <div class="flex gap-1">
+          <select class="form-control" id="order-filter" onchange="loadOrders()" style="width:auto;font-size:.85rem">
+            <option value="">All Orders</option>
+            <option value="placed">New Orders</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="preparing">Preparing</option>
+            <option value="out_for_delivery">Out for Delivery</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div id="orders-list">
+        <div style="text-align:center;padding:3rem"><div class="spinner" style="margin:auto"></div></div>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div class="view" id="view-profile">
+      <h2 class="mb-3">My Profile</h2>
+      <div style="background:white;border-radius:var(--radius-lg);padding:2rem;box-shadow:var(--shadow-sm);max-width:580px">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="profile-name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="profile-phone">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Farm Name</label>
+          <input type="text" class="form-control" id="profile-farm">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Farm Description</label>
+          <textarea class="form-control" id="profile-farm-desc" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" class="form-control" id="profile-city">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pincode</label>
+            <input type="text" class="form-control" id="profile-pincode">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="order-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Order Details</h3>
+      <button class="modal-close" onclick="closeModal('order-modal')">✕</button>
+    </div>
+    <div id="order-modal-content"></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+let user = requireAuth('farmer');
+if (!user) throw new Error('redirect');
+
+// Init
+document.getElementById('side-avatar').textContent = user.name[0].toUpperCase();
+document.getElementById('side-name').textContent = user.name;
+document.getElementById('nav-user-name').textContent = user.name;
+document.getElementById('farmer-greeting').textContent = user.name.split(' ')[0];
+
+// Pre-fill farm location in product form
+if (user.location) {
+  document.getElementById('prod-city').value = user.location.city || '';
+  document.getElementById('prod-pincode').value = user.location.pincode || '';
+}
+
+loadDashboard();
+loadProfile();
+
+function showView(name, linkEl) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+  if (linkEl) linkEl.classList.add('active');
+  if (name === 'products') loadFarmerProducts();
+  if (name === 'orders') loadOrders();
+}
+
+async function loadDashboard() {
+  try {
+    const [statsRes, ordersRes] = await Promise.all([api.products.getStats(), api.orders.getStats()]);
+    document.getElementById('stat-products').textContent = statsRes.stats.totalProducts;
+    document.getElementById('stat-orders').textContent = ordersRes.stats.total;
+    document.getElementById('stat-pending').textContent = ordersRes.stats.placed + ordersRes.stats.confirmed;
+    document.getElementById('stat-revenue').textContent = '₹' + ordersRes.stats.revenue.toFixed(0);
+    renderRecentOrders(ordersRes);
+  } catch (err) { console.error(err); }
+}
+
+async function renderRecentOrders(stats) {
+  try {
+    const { orders } = await api.orders.getAll();
+    const el = document.getElementById('recent-orders-list');
+    if (!orders.length) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><h3>No orders yet</h3><p>Orders will appear here when customers place them.</p></div>`; return; }
+    el.innerHTML = orders.slice(0, 5).map(o => renderOrderRow(o)).join('');
+  } catch {}
+}
+
+function renderOrderRow(o) {
+  const statusColors = { placed:'badge-blue', confirmed:'badge-green', preparing:'badge-orange', out_for_delivery:'badge-yellow', delivered:'badge-green', cancelled:'badge-red' };
+  const farmerItems = o.items.filter(i => i.farmer === user._id || (i.farmer && i.farmer._id === user._id));
+  return `
+    <div class="order-card">
+      <div class="order-header">
+        <div>
+          <div style="font-weight:600;font-size:.9rem">${o.customer?.name || 'Customer'}</div>
+          <div class="order-id">#${o._id.slice(-8).toUpperCase()}</div>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="badge ${statusColors[o.status] || 'badge-gray'}">${fmt.status(o.status)}</span>
+          <button class="btn btn-ghost btn-sm" onclick="viewOrder('${o._id}')">View</button>
+        </div>
+      </div>
+      <div class="flex items-center justify-between">
+        <div class="order-items-preview">
+          ${o.items.slice(0,3).map(i => `<span class="order-item-chip">${i.name} ×${i.quantity}</span>`).join('')}
+          ${o.items.length > 3 ? `<span class="order-item-chip">+${o.items.length-3} more</span>` : ''}
+        </div>
+        <div style="font-weight:700;color:var(--leaf)">₹${o.totalAmount}</div>
+      </div>
+      ${o.status === 'placed' ? `
+        <div class="flex gap-1 mt-2">
+          <button class="btn btn-primary btn-sm" onclick="updateStatus('${o._id}','confirmed')">✓ Confirm</button>
+          <button class="btn btn-danger btn-sm" onclick="updateStatus('${o._id}','cancelled')">✗ Decline</button>
+        </div>` : ''}
+      ${o.status === 'confirmed' ? `<button class="btn btn-secondary btn-sm mt-2" onclick="updateStatus('${o._id}','preparing')">Start Preparing</button>` : ''}
+      ${o.status === 'preparing' ? `<button class="btn btn-secondary btn-sm mt-2" onclick="updateStatus('${o._id}','out_for_delivery')">Mark Out for Delivery</button>` : ''}
+      ${o.status === 'out_for_delivery' ? `<button class="btn btn-primary btn-sm mt-2" onclick="updateStatus('${o._id}','delivered')">Mark Delivered</button>` : ''}
+    </div>
+  `;
+}
+
+async function loadFarmerProducts() {
+  const el = document.getElementById('farmer-products-list');
+  try {
+    const { products } = await api.products.getStats();
+    if (!products.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">🥬</div><h3>No products listed</h3><p>Add your first product to start selling!</p><button class="btn btn-primary" onclick="showView('add-product',null)">+ Add Product</button></div>`;
+      return;
+    }
+    const catIcons = { vegetables:'🥦', fruits:'🍎', grains:'🌾', dairy:'🥛', eggs:'🥚', herbs:'🌿', spices:'🌶️', other:'🧺' };
+    el.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${products.map(p => `
+              <tr>
+                <td><strong>${p.name}</strong>${p.isOrganic ? ' <span class="badge badge-green" style="font-size:.65rem">Organic</span>' : ''}</td>
+                <td>${catIcons[p.category] || ''} ${p.category}</td>
+                <td>₹${p.price}/${p.unit}</td>
+                <td>${p.quantity} ${p.unit}</td>
+                <td><span class="badge ${p.isAvailable && p.quantity > 0 ? 'badge-green' : 'badge-gray'}">${p.isAvailable && p.quantity > 0 ? 'Available' : 'Unavailable'}</span></td>
+                <td class="product-actions">
+                  <button class="btn btn-ghost btn-sm" onclick="editProduct(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p._id}','${p.name}')">🗑️</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) { el.innerHTML = `<p class="text-muted text-center p-2">Error loading products.</p>`; }
+}
+
+async function saveProduct() {
+  const btn = document.getElementById('save-product-btn');
+  const editId = document.getElementById('edit-product-id').value;
+
+  const data = {
+    name: document.getElementById('prod-name').value.trim(),
+    category: document.getElementById('prod-category').value,
+    price: parseFloat(document.getElementById('prod-price').value),
+    unit: document.getElementById('prod-unit').value,
+    quantity: parseFloat(document.getElementById('prod-quantity').value),
+    description: document.getElementById('prod-description').value.trim(),
+    isOrganic: document.getElementById('prod-organic').checked,
+    location: {
+      city: document.getElementById('prod-city').value.trim(),
+      pincode: document.getElementById('prod-pincode').value.trim()
+    },
+    harvestDate: document.getElementById('prod-harvest').value || undefined
+  };
+
+  const imgUrl = document.getElementById('prod-image').value.trim();
+  if (imgUrl) data.images = [imgUrl];
+
+  if (!data.name || !data.category || isNaN(data.price) || isNaN(data.quantity)) {
+    toast.error('Please fill all required fields.'); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    if (editId) {
+      await api.products.update(editId, data);
+      toast.success('Product updated!');
+    } else {
+      await api.products.create(data);
+      toast.success('Product listed successfully! 🎉');
+    }
+    resetProductForm();
+    showView('products', null);
+  } catch (err) {
+    toast.error(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save Product';
+  }
+}
+
+function editProduct(p) {
+  document.getElementById('edit-product-id').value = p._id;
+  document.getElementById('product-form-title').textContent = 'Edit Product';
+  document.getElementById('prod-name').value = p.name;
+  document.getElementById('prod-category').value = p.category;
+  document.getElementById('prod-price').value = p.price;
+  document.getElementById('prod-unit').value = p.unit;
+  document.getElementById('prod-quantity').value = p.quantity;
+  document.getElementById('prod-description').value = p.description || '';
+  document.getElementById('prod-organic').checked = p.isOrganic;
+  if (p.location) {
+    document.getElementById('prod-city').value = p.location.city || '';
+    document.getElementById('prod-pincode').value = p.location.pincode || '';
+  }
+  if (p.images && p.images[0]) document.getElementById('prod-image').value = p.images[0];
+  showView('add-product', null);
+}
+
+function resetProductForm() {
+  document.getElementById('edit-product-id').value = '';
+  document.getElementById('product-form-title').textContent = 'Add New Product';
+  ['prod-name','prod-description','prod-image','prod-harvest'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('prod-category').value = '';
+  document.getElementById('prod-price').value = '';
+  document.getElementById('prod-quantity').value = '';
+  document.getElementById('prod-organic').checked = false;
+  document.getElementById('prod-city').value = user.location?.city || '';
+  document.getElementById('prod-pincode').value = user.location?.pincode || '';
+}
+
+async function deleteProduct(id, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  try {
+    await api.products.delete(id);
+    toast.success('Product deleted.');
+    loadFarmerProducts();
+  } catch (err) { toast.error(err.message); }
+}
+
+async function loadOrders() {
+  const el = document.getElementById('orders-list');
+  try {
+    const { orders } = await api.orders.getAll();
+    if (!orders.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><h3>No orders yet</h3><p>When customers place orders, they'll appear here.</p></div>`;
+      return;
+    }
+    el.innerHTML = orders.map(o => renderOrderRow(o)).join('');
+  } catch (err) { el.innerHTML = `<p class="text-muted text-center p-2">Error loading orders.</p>`; }
+}
+
+async function updateStatus(orderId, status) {
+  try {
+    await api.orders.updateStatus(orderId, status);
+    toast.success(`Order marked as ${fmt.status(status)}`);
+    loadOrders();
+    loadDashboard();
+  } catch (err) { toast.error(err.message); }
+}
+
+async function viewOrder(id) {
+  try {
+    const { order } = await api.orders.getById(id);
+    const content = document.getElementById('order-modal-content');
+    content.innerHTML = `
+      <div class="flex items-center justify-between mb-2">
+        <div><strong>Order #${order._id.slice(-8).toUpperCase()}</strong></div>
+        <div>${fmt.date(order.createdAt)}</div>
+      </div>
+      <div class="mb-2"><strong>Customer:</strong> ${order.customer?.name} • ${order.customer?.phone || 'N/A'}</div>
+      <div class="mb-2"><strong>Delivery:</strong> ${order.deliveryAddress?.address}, ${order.deliveryAddress?.city} – ${order.deliveryAddress?.pincode}</div>
+      <hr class="divider">
+      <h4 class="mb-1">Items</h4>
+      ${order.items.map(i => `
+        <div class="flex items-center justify-between p-1" style="border-bottom:1px solid var(--gray-100)">
+          <div>${i.name}</div>
+          <div>${i.quantity} ${i.unit} × ₹${i.price} = <strong>₹${(i.quantity*i.price).toFixed(2)}</strong></div>
+        </div>
+      `).join('')}
+      <div class="flex items-center justify-between mt-2 font-bold">
+        <span>Total</span><span style="color:var(--leaf);font-size:1.1rem">₹${order.totalAmount}</span>
+      </div>
+      <div class="mt-2"><strong>Payment:</strong> ${order.paymentMethod} • <span style="text-transform:capitalize">${order.paymentStatus}</span></div>
+    `;
+    document.getElementById('order-modal').classList.add('open');
+  } catch (err) { toast.error(err.message); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function loadProfile() {
+  document.getElementById('profile-name').value = user.name;
+  document.getElementById('profile-phone').value = user.phone || '';
+  document.getElementById('profile-farm').value = user.farmName || '';
+  document.getElementById('profile-farm-desc').value = user.farmDescription || '';
+  document.getElementById('profile-city').value = user.location?.city || '';
+  document.getElementById('profile-pincode').value = user.location?.pincode || '';
+}
+
+async function saveProfile() {
+  try {
+    const data = {
+      name: document.getElementById('profile-name').value,
+      phone: document.getElementById('profile-phone').value,
+      farmName: document.getElementById('profile-farm').value,
+      farmDescription: document.getElementById('profile-farm-desc').value,
+      location: {
+        city: document.getElementById('profile-city').value,
+        pincode: document.getElementById('profile-pincode').value
+      }
+    };
+    const { user: updated } = await api.auth.updateProfile(data);
+    api.setAuth(localStorage.getItem('lb_token'), updated);
+    user = updated;
+    toast.success('Profile updated!');
+  } catch (err) { toast.error(err.message); }
+}
+
+function logout() {
+  api.clearAuth();
+  window.location.href = '../pages/login.html';
+}
+</script>
+</body>
+</html>

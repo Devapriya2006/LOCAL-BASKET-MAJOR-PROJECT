@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { background: var(--soil); display: flex; flex-direction: column; min-height: 100vh; }
+    .auth-wrapper {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      max-width: 960px;
+      margin: auto;
+      background: white;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      min-height: 560px;
+    }
+    .auth-side {
+      background: var(--earth);
+      padding: 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-side::before {
+      content: '🌾🥦🍎🥛🌿🌶️';
+      position: absolute;
+      font-size: 4rem;
+      line-height: 1.4;
+      opacity: .12;
+      word-spacing: 1rem;
+      bottom: -1rem; right: -1rem;
+      width: 250px;
+      letter-spacing: .5rem;
+      filter: blur(1px);
+    }
+    .auth-side h1 { color: var(--straw); font-size: 2.5rem; margin-bottom: 1rem; }
+    .auth-side p { color: var(--gray-200); line-height: 1.7; }
+    .auth-form-wrap { padding: 2.5rem; display: flex; flex-direction: column; justify-content: center; }
+    .auth-tabs { display: flex; gap: 0; margin-bottom: 2rem; border-radius: var(--radius); overflow: hidden; border: 1.5px solid var(--gray-200); }
+    .auth-tab {
+      flex: 1; padding: .7rem; text-align: center;
+      font-weight: 600; font-size: .9rem;
+      cursor: pointer;
+      background: white;
+      color: var(--gray-400);
+      transition: all var(--transition);
+      border: none;
+    }
+    .auth-tab.active { background: var(--leaf); color: white; }
+    .role-select { display: flex; gap: .75rem; margin-bottom: 1.25rem; }
+    .role-btn {
+      flex: 1; padding: .75rem; text-align: center;
+      border: 2px solid var(--gray-200); border-radius: var(--radius);
+      cursor: pointer; transition: all var(--transition);
+      background: white;
+    }
+    .role-btn:hover, .role-btn.active { border-color: var(--leaf); background: rgba(45,106,45,.05); }
+    .role-btn .role-icon { font-size: 1.8rem; margin-bottom: .25rem; }
+    .role-btn .role-label { font-size: .8rem; font-weight: 600; color: var(--earth); }
+    .auth-logo { text-align: center; margin-bottom: .75rem; }
+    .auth-logo span { font-family: var(--ff-display); font-size: 1.4rem; color: var(--soil); font-weight: 700; }
+    .back-home {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: .82rem;
+      color: var(--earth);
+      text-decoration: none;
+      font-weight: 600;
+      opacity: .65;
+      transition: opacity .2s;
+      margin-bottom: 1.25rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .back-home:hover { opacity: 1; }
+    .auth-features { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    .feature-item { display: flex; align-items: center; gap: .75rem; color: var(--gray-200); font-size: .88rem; }
+    .feature-icon { background: rgba(255,255,255,.1); padding: .4rem; border-radius: 6px; }
+    .auth-logo-link { font-family: var(--ff-display); font-size: 1.5rem; color: var(--straw); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; margin-bottom: 2rem; }
+    .auth-side-logo { font-family: var(--ff-display); font-size: 1.5rem; color: var(--straw); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; margin-bottom: 2rem; }
+    .auth-features-list { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    .feature-row { display: flex; align-items: center; gap: .75rem; color: var(--gray-200); font-size: .88rem; }
+    .feature-badge { background: rgba(255,255,255,.1); padding: .4rem; border-radius: 6px; }
+    .auth-side-link { font-family: var(--ff-display); font-size: 1.5rem; color: var(--straw); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; margin-bottom: 2rem; }
+    .auth-features-container { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    .auth-feature-item { display: flex; align-items: center; gap: .75rem; color: var(--gray-200); font-size: .88rem; }
+    .auth-feature-icon { background: rgba(255,255,255,.1); padding: .4rem; border-radius: 6px; }
+    .auth-side-link-inline { font-family: var(--ff-display); font-size: 1.5rem; color: var(--straw); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; margin-bottom: 2rem; }
+    .auth-features-inline { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    .feature-item-inline { display: flex; align-items: center; gap: .75rem; color: var(--gray-200); font-size: .88rem; }
+    .feature-badge-inline { background: rgba(255,255,255,.1); padding: .4rem; border-radius: 6px; }
+    .auth-side-features-container { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    .auth-side-feature-item { display: flex; align-items: center; gap: .75rem; color: var(--gray-200); font-size: .88rem; }
+    .auth-side-feature-icon { background: rgba(255,255,255,.1); padding: .4rem; border-radius: 6px; }
+    .auth-side-link-main { font-family: var(--ff-display); font-size: 1.5rem; color: var(--straw); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; margin-bottom: 2rem; }
+    .auth-side-logo-link { font-family: var(--ff-display); font-size: 1.5rem; color: var(--straw); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; margin-bottom: 2rem; }
+    .auth-side-features { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    .feature-list-item { display: flex; align-items: center; gap: .75rem; color: var(--gray-200); font-size: .88rem; }
+    .feature-list-icon { background: rgba(255,255,255,.1); padding: .4rem; border-radius: 6px; }
+    .auth-side-feature-list { margin-top: 2rem; display: flex; flex-direction: column; gap: .75rem; }
+    @media (max-width: 700px) {
+      .auth-wrapper { grid-template-columns: 1fr; margin: 1rem; }
+      .auth-side { display: none; }
+      body { background: var(--cream); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <!-- Side Panel -->
+  <div class="auth-side">
+    <a href="../index.html" class="auth-side-logo-link">
+      🧺 LocalBasket
+    </a>
+    <h1>Fresh from<br>the Farm</h1>
+    <p>Connect directly with local farmers. Get the freshest produce at fair prices, delivered straight to your door.</p>
+    <div class="auth-side-feature-list">
+      <div class="auth-side-feature-item">
+        <span class="auth-side-feature-icon">🌱</span> 100% locally sourced produce
+      </div>
+      <div class="auth-side-feature-item">
+        <span class="auth-side-feature-icon">💰</span> Fair prices, no middlemen
+      </div>
+      <div class="auth-side-feature-item">
+        <span class="auth-side-feature-icon">🚚</span> Same-day delivery available
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Panel -->
+  <div class="auth-form-wrap">
+    <div class="auth-logo">
+      <span>🧺 LocalBasket</span>
+    </div>
+
+    <a class="back-home" onclick="nav.goHome()">← Back to Home</a>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <div class="input-icon">
+          <span class="icon">✉️</span>
+          <input type="email" class="form-control" id="login-email" placeholder="you@example.com" autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="input-icon">
+          <span class="icon">🔒</span>
+          <input type="password" class="form-control" id="login-password" placeholder="Your password" autocomplete="current-password">
+        </div>
+        <div class="forgot-password-link">
+          <a href="forgot-password.html" class="text-sm">Forgot password?</a>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block btn-lg mt-2" id="login-btn" onclick="doLogin()">Sign In</button>
+      <p class="text-center mt-2 text-sm text-muted">
+        Don't have an account? <a href="#" onclick="switchTab('register')">Register free →</a>
+      </p>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" class="hidden">
+      <div class="form-group">
+        <label class="form-label">I am a…</label>
+        <div class="role-select">
+          <div class="role-btn active" id="role-customer" onclick="selectRole('customer')">
+            <div class="role-icon">🛒</div>
+            <div class="role-label">Customer</div>
+          </div>
+          <div class="role-btn" id="role-farmer" onclick="selectRole('farmer')">
+            <div class="role-icon">🌾</div>
+            <div class="role-label">Farmer</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="reg-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" class="form-control" id="reg-phone" placeholder="10-digit number">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-control" id="reg-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" id="reg-password" placeholder="Min. 6 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group hidden" id="farm-name-group">
+        <label class="form-label">Farm Name</label>
+        <input type="text" class="form-control" id="reg-farm-name" placeholder="e.g. Green Valley Farm">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <input type="text" class="form-control" id="reg-city" placeholder="Your city">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pincode</label>
+          <input type="text" class="form-control" id="reg-pincode" placeholder="6-digit">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block btn-lg" id="reg-btn" onclick="doRegister()">Create Account</button>
+      <p class="text-center mt-2 text-sm text-muted">
+        Already have an account? <a href="#" onclick="switchTab('login')">Sign in →</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+let selectedRole = 'customer';
+
+// Check URL params
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('mode') === 'register') switchTab('register');
+if (urlParams.get('role') === 'farmer') { switchTab('register'); selectRole('farmer'); }
+
+// Redirect if already logged in
+if (api.isLoggedIn()) {
+  const user = api.getUser();
+  window.location.href = getDashboardHref(user);
+}
+
+function getDashboardHref(user) {
+  if (user.role === 'admin') return 'admin-panel.html';
+  return user.role === 'farmer' ? 'farmer-dashboard.html' : 'customer-dashboard.html';
+}
+
+function switchTab(tab) {
+  document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+function selectRole(role) {
+  selectedRole = role;
+  document.getElementById('role-customer').classList.toggle('active', role === 'customer');
+  document.getElementById('role-farmer').classList.toggle('active', role === 'farmer');
+  document.getElementById('farm-name-group').style.display = role === 'farmer' ? 'block' : 'none';
+}
+
+async function doLogin() {
+  const btn = document.getElementById('login-btn');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!email || !password) { toast.error('Please fill all fields.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
+  try {
+    const { token, user } = await api.auth.login({ email, password });
+    api.setAuth(token, user);
+    toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
+    setTimeout(() => {
+      window.location.href = getDashboardHref(user);
+    }, 800);
+  } catch (err) {
+    toast.error(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+
+async function doRegister() {
+  const btn = document.getElementById('reg-btn');
+  const data = {
+    name: document.getElementById('reg-name').value.trim(),
+    email: document.getElementById('reg-email').value.trim(),
+    password: document.getElementById('reg-password').value,
+    phone: document.getElementById('reg-phone').value.trim(),
+    role: selectedRole,
+    location: {
+      city: document.getElementById('reg-city').value.trim(),
+      pincode: document.getElementById('reg-pincode').value.trim()
+    }
+  };
+  if (selectedRole === 'farmer') data.farmName = document.getElementById('reg-farm-name').value.trim();
+
+  if (!data.name || !data.email || !data.password) { toast.error('Please fill required fields.'); return; }
+  if (data.password.length < 6) { toast.error('Password must be at least 6 characters.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating account…';
+
+  try {
+    const { token, user } = await api.auth.register(data);
+    api.setAuth(token, user);
+    toast.success('Account created! Welcome to LocalBasket 🌱');
+    setTimeout(() => {
+      window.location.href = getDashboardHref(user);
+    }, 1000);
+  } catch (err) {
+    toast.error(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+}
+
+// Enter key support
+document.addEventListener('keypress', e => {
+  if (e.key === 'Enter') {
+    if (!document.getElementById('login-form').classList.contains('hidden')) doLogin();
+    else doRegister();
+  }
+});
+</script>
+</body>
+</html>

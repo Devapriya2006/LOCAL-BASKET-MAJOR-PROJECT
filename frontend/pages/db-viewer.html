@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DB Viewer – LocalBasket Admin</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { background: #1a1a2e; color: #e0e0e0; font-family: var(--ff-body); }
+    .db-navbar {
+      background: #16213e;
+      padding: .75rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #0f3460;
+    }
+    .db-navbar .brand { color: #00d4aa; font-family: var(--ff-display); font-size: 1.2rem; font-weight: 700; }
+    .db-layout { display: grid; grid-template-columns: 230px 1fr; height: calc(100vh - 54px); }
+    .db-sidebar {
+      background: #16213e;
+      border-right: 1px solid #0f3460;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .db-sidebar h4 { color: #64748b; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; margin: 1rem 0 .4rem; font-family: var(--ff-body); }
+    .db-nav-item {
+      padding: .5rem .75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .88rem;
+      color: #94a3b8;
+      display: flex; align-items: center; gap: .6rem;
+      transition: all .15s;
+      margin-bottom: 2px;
+    }
+    .db-nav-item:hover { background: #0f3460; color: #e0e0e0; }
+    .db-nav-item.active { background: #00d4aa22; color: #00d4aa; }
+    .db-nav-count { margin-left: auto; background: #0f3460; color: #94a3b8; font-size: .68rem; padding: .1rem .4rem; border-radius: 10px; }
+    .db-main { overflow: auto; padding: 1.5rem; }
+    /* Stats */
+    .db-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .db-stat-card { background: #16213e; border: 1px solid #0f3460; border-radius: 10px; padding: 1rem 1.25rem; }
+    .db-stat-card .val { font-size: 1.75rem; font-weight: 700; font-family: var(--ff-display); }
+    .db-stat-card .lbl { font-size: .72rem; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-top: .2rem; }
+    .db-stat-card.green .val { color: #00d4aa; }
+    .db-stat-card.blue .val { color: #38bdf8; }
+    .db-stat-card.yellow .val { color: #fbbf24; }
+    .db-stat-card.red .val { color: #f87171; }
+    /* Toolbar */
+    .db-toolbar {
+      display: flex; align-items: center; gap: .75rem;
+      margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .db-toolbar h3 { color: #e0e0e0; font-family: var(--ff-display); margin-right: .5rem; }
+    .db-input {
+      background: #0f3460; border: 1px solid #1e3a5f; color: #e0e0e0;
+      padding: .45rem .85rem; border-radius: 6px; font-size: .85rem; outline: none;
+      font-family: var(--ff-body);
+    }
+    .db-input:focus { border-color: #00d4aa; }
+    .db-btn {
+      padding: .45rem 1rem; border-radius: 6px; border: 1px solid #1e3a5f;
+      background: #0f3460; color: #94a3b8; font-size: .82rem; cursor: pointer;
+      font-family: var(--ff-body); transition: all .15s;
+    }
+    .db-btn:hover { background: #1e3a5f; color: #e0e0e0; }
+    .db-btn.primary { background: #00d4aa22; color: #00d4aa; border-color: #00d4aa44; }
+    .db-btn.danger { background: #f8717122; color: #f87171; border-color: #f8717144; }
+    /* Table */
+    .db-table-wrap { background: #16213e; border: 1px solid #0f3460; border-radius: 10px; overflow: hidden; }
+    .db-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .db-table thead tr { background: #0f3460; }
+    .db-table thead th { padding: .65rem .85rem; text-align: left; color: #64748b; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; border-bottom: 1px solid #1e3a5f; white-space: nowrap; }
+    .db-table tbody tr { border-bottom: 1px solid #0f3460; transition: background .1s; cursor: pointer; }
+    .db-table tbody tr:last-child { border-bottom: none; }
+    .db-table tbody tr:hover { background: #0f3460; }
+    .db-table tbody td { padding: .6rem .85rem; color: #cbd5e1; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .db-table .id-cell { font-family: monospace; font-size: .72rem; color: #64748b; }
+    .db-badge { display: inline-block; padding: .15rem .5rem; border-radius: 10px; font-size: .68rem; font-weight: 600; }
+    .db-badge.farmer { background: rgba(0,212,170,.15); color: #00d4aa; }
+    .db-badge.customer { background: rgba(56,189,248,.15); color: #38bdf8; }
+    .db-badge.admin { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .db-badge.available { background: rgba(0,212,170,.15); color: #00d4aa; }
+    .db-badge.unavailable { background: rgba(248,113,113,.15); color: #f87171; }
+    .db-badge.placed { background: rgba(56,189,248,.15); color: #38bdf8; }
+    .db-badge.delivered { background: rgba(0,212,170,.15); color: #00d4aa; }
+    .db-badge.cancelled { background: rgba(248,113,113,.15); color: #f87171; }
+    .db-badge.preparing, .db-badge.confirmed { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .db-badge.out_for_delivery { background: rgba(167,139,250,.15); color: #a78bfa; }
+    /* JSON Viewer */
+    .json-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 999;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .json-box {
+      background: #0d1117; border: 1px solid #0f3460; border-radius: 12px;
+      width: 100%; max-width: 700px; max-height: 85vh; overflow: auto;
+      padding: 1.5rem;
+    }
+    .json-box .json-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .json-title { color: #00d4aa; }
+    .json-header-buttons { display: flex; gap: .5rem; }
+    .json-header-buttons { display: flex; gap: .5rem; }
+    .json-box pre { color: #e2e8f0; font-size: .8rem; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+    .json-key { color: #38bdf8; }
+    .json-string { color: #a3e635; }
+    .json-number { color: #fbbf24; }
+    .json-bool { color: #f87171; }
+    .json-null { color: #94a3b8; }
+    /* Pagination */
+    .db-pagination { display: flex; gap: .4rem; align-items: center; margin-top: 1rem; }
+    .db-page-btn { padding: .3rem .6rem; border-radius: 4px; border: 1px solid #1e3a5f; background: #0f3460; color: #94a3b8; font-size: .78rem; cursor: pointer; }
+    .db-page-btn:hover, .db-page-btn.active { background: #00d4aa22; color: #00d4aa; border-color: #00d4aa44; }
+    /* DB info card */
+    .db-info-card { background: #16213e; border: 1px solid #0f3460; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .db-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .75rem; }
+    .db-info-row { font-size: .82rem; }
+    .db-info-row .k { color: #64748b; font-size: .72rem; }
+    .db-info-row .v { color: #00d4aa; font-weight: 600; margin-top: .1rem; }
+    .db-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00d4aa; display: inline-block; margin-right: .4rem; animation: blink 1.5s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    /* Navbar flex container */
+    .db-navbar-flex { display: flex; align-items: center; gap: 1rem; font-size: .82rem; }
+    /* Status text */
+    .db-status-text { color: #00d4aa; }
+    /* Navbar links */
+    .db-navbar a { color: #64748b; }
+    /* Loading container */
+    .db-loading-container { text-align: center; padding: 4rem; color: #64748b; }
+    .db-loading-icon { font-size: 3rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<div class="db-navbar">
+  <div class="brand">🗄️ LocalBasket DB Viewer</div>
+  <div class="db-navbar-flex">
+    <span id="db-status-text" class="db-status-text"><span class="db-status-dot"></span>Connecting…</span>
+    <a href="../index.html">← Back to App</a>
+    <a href="#" onclick="api.clearAuth();window.location='../pages/login.html'">Logout</a>
+  </div>
+</div>
+
+<div class="db-layout">
+  <!-- Sidebar -->
+  <aside class="db-sidebar">
+    <h4>Database</h4>
+    <div class="db-nav-item active" id="nav-overview" onclick="showView('overview')">
+      📊 Overview
+    </div>
+
+    <h4>Collections</h4>
+    <div class="db-nav-item" id="nav-users" onclick="loadCollection('users')">
+      👥 users
+      <span class="db-nav-count" id="count-users">–</span>
+    </div>
+    <div class="db-nav-item" id="nav-products" onclick="loadCollection('products')">
+      🥬 products
+      <span class="db-nav-count" id="count-products">–</span>
+    </div>
+    <div class="db-nav-item" id="nav-orders" onclick="loadCollection('orders')">
+      📦 orders
+      <span class="db-nav-count" id="count-orders">–</span>
+    </div>
+
+    <h4>Tools</h4>
+    <div class="db-nav-item" onclick="refreshAll()">🔄 Refresh All</div>
+    <div class="db-nav-item" onclick="exportJSON()">⬇️ Export JSON</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="db-main" id="db-main">
+    <div class="db-loading">
+      <div class="db-loading-icon">🗄️</div>
+      <div>Loading database info…</div>
+    </div>
+  </main>
+</div>
+
+<!-- JSON Modal -->
+<div class="json-modal hidden" id="json-modal" onclick="closeJSONModal(event)">
+  <div class="json-box">
+    <div class="json-header">
+      <strong class="json-title" id="json-title">Document</strong>
+      <div class="json-header-buttons">
+        <button class="db-btn" onclick="copyJSON()">📋 Copy</button>
+        <button class="db-btn danger" id="json-delete-btn">🗑️ Delete</button>
+        <button class="db-btn" onclick="document.getElementById('json-modal').classList.add('hidden')">✕ Close</button>
+      </div>
+    </div>
+    <pre id="json-content"></pre>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+// Require admin login
+const user = api.getUser();
+if (!user || user.role !== 'admin') {
+  // For demo: allow any logged-in user to view (remove in production)
+  if (!api.isLoggedIn()) {
+    alert('Please login as admin to access the DB viewer.\n\nFor demo purposes, you can set your role to "admin" in MongoDB.');
+    window.location.href = 'login.html';
+  }
+}
+
+let currentCollection = null;
+let currentPage = 1;
+let currentSearch = '';
+let currentDocId = null;
+let dbStatsData = null;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadOverview();
+});
+
+// ─── Overview ─────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  setActiveNav('nav-overview');
+  const main = document.getElementById('db-main');
+  main.innerHTML = `<div style="text-align:center;padding:3rem;color:#64748b">Loading stats…</div>`;
+
+  try {
+    const { database, collections, revenue } = await api.get('/admin/db-stats');
+    dbStatsData = { database, collections };
+    document.getElementById('db-status-text').innerHTML = `<span class="db-status-dot"></span>Connected to ${database.name}`;
+
+    // Update sidebar counts
+    document.getElementById('count-users').textContent = collections.users.total;
+    document.getElementById('count-products').textContent = collections.products.total;
+    document.getElementById('count-orders').textContent = collections.orders.total;
+
+    main.innerHTML = `
+      <h2 style="color:#e0e0e0;margin-bottom:1.5rem;font-family:var(--ff-display)">Database Overview</h2>
+
+      <!-- DB Info -->
+      <div class="db-info-card">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">
+          <span class="db-status-dot"></span>
+          <strong style="color:#00d4aa">${database.name}</strong>
+          <span style="color:#64748b;font-size:.8rem">— ${database.state}</span>
+        </div>
+        <div class="db-info-grid">
+          <div class="db-info-row"><div class="k">Host</div><div class="v">${database.host}:${database.port}</div></div>
+          <div class="db-info-row"><div class="k">Collections</div><div class="v">${database.collections}</div></div>
+          <div class="db-info-row"><div class="k">Data Size</div><div class="v">${database.dataSize}</div></div>
+          <div class="db-info-row"><div class="k">Storage Size</div><div class="v">${database.storageSize}</div></div>
+          <div class="db-info-row"><div class="k">Indexes</div><div class="v">${database.indexes}</div></div>
+          <div class="db-info-row"><div class="k">Avg Object Size</div><div class="v">${database.avgObjSize}</div></div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="db-stats-grid">
+        <div class="db-stat-card green"><div class="val">${collections.users.total}</div><div class="lbl">Total Users</div></div>
+        <div class="db-stat-card blue"><div class="val">${collections.users.farmers}</div><div class="lbl">Farmers</div></div>
+        <div class="db-stat-card blue"><div class="val">${collections.users.customers}</div><div class="lbl">Customers</div></div>
+        <div class="db-stat-card yellow"><div class="val">${collections.products.total}</div><div class="lbl">Products</div></div>
+        <div class="db-stat-card green"><div class="val">${collections.products.available}</div><div class="lbl">Available</div></div>
+        <div class="db-stat-card yellow"><div class="val">${collections.orders.total}</div><div class="lbl">Total Orders</div></div>
+        <div class="db-stat-card blue"><div class="val">${collections.orders.pending}</div><div class="lbl">Active Orders</div></div>
+        <div class="db-stat-card green"><div class="val">₹${parseFloat(revenue).toLocaleString('en-IN')}</div><div class="lbl">Total Revenue</div></div>
+      </div>
+
+      <!-- Collections quick access -->
+      <h3 style="color:#e0e0e0;margin:1.5rem 0 1rem;font-family:var(--ff-display)">Collections</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+        ${[
+          { name: 'users', icon: '👥', count: collections.users.total, desc: 'Farmers & Customers' },
+          { name: 'products', icon: '🥬', count: collections.products.total, desc: 'Product Listings' },
+          { name: 'orders', icon: '📦', count: collections.orders.total, desc: 'Customer Orders' }
+        ].map(c => `
+          <div class="db-info-card" style="cursor:pointer;transition:border-color .15s" onclick="loadCollection('${c.name}')"
+            onmouseover="this.style.borderColor='#00d4aa44'" onmouseout="this.style.borderColor='#0f3460'">
+            <div style="font-size:2rem;margin-bottom:.5rem">${c.icon}</div>
+            <div style="font-size:1.5rem;font-weight:700;color:#00d4aa;font-family:var(--ff-display)">${c.count}</div>
+            <div style="color:#94a3b8;font-size:.8rem;margin-top:.2rem">${c.name}</div>
+            <div style="color:#64748b;font-size:.72rem">${c.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('db-status-text').innerHTML = `<span style="background:var(--tomato);width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.4rem"></span>Disconnected`;
+    main.innerHTML = `
+      <div style="text-align:center;padding:3rem;color:#f87171">
+        <div style="font-size:3rem;margin-bottom:1rem">⚠️</div>
+        <div style="font-size:1.1rem;font-weight:600;margin-bottom:.5rem">Cannot connect to database</div>
+        <div style="font-size:.85rem;color:#64748b;max-width:400px;margin:0 auto">${err.message}</div>
+        <div style="margin-top:1.5rem;font-size:.82rem;color:#64748b">Make sure the backend server is running on port 5000 and you are logged in as admin.</div>
+      </div>
+    `;
+  }
+}
+
+// ─── Collection View ──────────────────────────────────────────────────────────
+async function loadCollection(name, page = 1, search = '') {
+  currentCollection = name;
+  currentPage = page;
+  currentSearch = search;
+  setActiveNav(`nav-${name}`);
+
+  const main = document.getElementById('db-main');
+  main.innerHTML = `<div style="text-align:center;padding:3rem;color:#64748b">Loading ${name}…</div>`;
+
+  try {
+    const params = new URLSearchParams({ page, limit: 15, search });
+    const res = await api.get(`/admin/collection/${name}?${params}`);
+
+    const cols = getColumns(name);
+
+    main.innerHTML = `
+      <!-- Toolbar -->
+      <div class="db-toolbar">
+        <h3>${getIcon(name)} ${name}</h3>
+        <span style="color:#64748b;font-size:.82rem">${res.total} documents</span>
+        <input class="db-input" id="search-input" placeholder="Search…" value="${search}" style="min-width:200px" onkeypress="if(event.key==='Enter')loadCollection('${name}',1,this.value)">
+        <button class="db-btn primary" onclick="loadCollection('${name}',1,document.getElementById('search-input').value)">🔍 Search</button>
+        <button class="db-btn" onclick="loadCollection('${name}',${page},'${search}')">🔄 Refresh</button>
+        <button class="db-btn" onclick="exportCollectionJSON('${name}')">⬇️ Export</button>
+      </div>
+
+      <!-- Table -->
+      <div class="db-table-wrap">
+        <table class="db-table">
+          <thead>
+            <tr>
+              ${cols.map(c => `<th>${c.label}</th>`).join('')}
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${res.documents.length === 0
+              ? `<tr><td colspan="${cols.length + 1}" style="text-align:center;color:#64748b;padding:2rem">No documents found</td></tr>`
+              : res.documents.map(doc => `
+                <tr onclick="viewDocument('${name}', '${doc._id}')">
+                  ${cols.map(c => `<td title="${getCellRaw(doc, c.key)}">${getCellHTML(doc, c.key, name)}</td>`).join('')}
+                  <td onclick="event.stopPropagation()">
+                    <button class="db-btn" style="padding:.2rem .5rem;font-size:.72rem" onclick="viewDocument('${name}','${doc._id}')">👁 View</button>
+                    <button class="db-btn danger" style="padding:.2rem .5rem;font-size:.72rem;margin-left:.3rem" onclick="deleteDocument('${name}','${doc._id}')">🗑</button>
+                  </td>
+                </tr>
+              `).join('')
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="db-pagination">
+        <span style="font-size:.78rem;color:#64748b">Page ${res.currentPage} of ${res.pages} (${res.total} total)</span>
+        ${res.currentPage > 1 ? `<button class="db-page-btn" onclick="loadCollection('${name}',${res.currentPage-1},'${search}')">‹</button>` : ''}
+        ${Array.from({length:Math.min(res.pages,8)},(_,i)=>i+1).map(p => `
+          <button class="db-page-btn ${p===res.currentPage?'active':''}" onclick="loadCollection('${name}',${p},'${search}')">${p}</button>
+        `).join('')}
+        ${res.currentPage < res.pages ? `<button class="db-page-btn" onclick="loadCollection('${name}',${res.currentPage+1},'${search}')">›</button>` : ''}
+      </div>
+    `;
+  } catch (err) {
+    main.innerHTML = `<div style="color:#f87171;padding:2rem">Error: ${err.message}</div>`;
+  }
+}
+
+// ─── Column Definitions ───────────────────────────────────────────────────────
+function getColumns(name) {
+  if (name === 'users') return [
+    { label: '_id', key: '_id' },
+    { label: 'Name', key: 'name' },
+    { label: 'Email', key: 'email' },
+    { label: 'Role', key: 'role' },
+    { label: 'Phone', key: 'phone' },
+    { label: 'City', key: 'location.city' },
+    { label: 'Active', key: 'isActive' },
+    { label: 'Created', key: 'createdAt' }
+  ];
+  if (name === 'products') return [
+    { label: '_id', key: '_id' },
+    { label: 'Name', key: 'name' },
+    { label: 'Category', key: 'category' },
+    { label: 'Price', key: 'price' },
+    { label: 'Unit', key: 'unit' },
+    { label: 'Qty', key: 'quantity' },
+    { label: 'Organic', key: 'isOrganic' },
+    { label: 'Status', key: 'isAvailable' },
+    { label: 'Rating', key: 'averageRating' },
+    { label: 'Created', key: 'createdAt' }
+  ];
+  if (name === 'orders') return [
+    { label: '_id', key: '_id' },
+    { label: 'Total', key: 'totalAmount' },
+    { label: 'Status', key: 'status' },
+    { label: 'Payment', key: 'paymentMethod' },
+    { label: 'City', key: 'deliveryAddress.city' },
+    { label: 'Items', key: 'items' },
+    { label: 'Created', key: 'createdAt' }
+  ];
+  return [{ label: '_id', key: '_id' }];
+}
+
+function getIcon(name) { return { users:'👥', products:'🥬', orders:'📦' }[name] || '📄'; }
+
+function getNestedVal(doc, key) {
+  return key.split('.').reduce((o, k) => o?.[k], doc);
+}
+function getCellRaw(doc, key) {
+  const val = getNestedVal(doc, key);
+  if (val === null || val === undefined) return '–';
+  if (Array.isArray(val)) return `[${val.length} items]`;
+  return String(val);
+}
+
+function getCellHTML(doc, key, collection) {
+  const val = getNestedVal(doc, key);
+  if (val === null || val === undefined) return `<span style="color:#4a5568">–</span>`;
+  if (key === '_id') return `<span class="id-cell" title="${val}">${String(val).slice(-8)}</span>`;
+  if (key === 'createdAt') return `<span style="color:#64748b">${new Date(val).toLocaleDateString('en-IN')}</span>`;
+  if (key === 'role') return `<span class="db-badge ${val}">${val}</span>`;
+  if (key === 'status') return `<span class="db-badge ${val}">${val.replace(/_/g,' ')}</span>`;
+  if (key === 'isActive') return val ? `<span style="color:#00d4aa">✓ Yes</span>` : `<span style="color:#f87171">✗ No</span>`;
+  if (key === 'isAvailable') return val ? `<span class="db-badge available">Available</span>` : `<span class="db-badge unavailable">Unavailable</span>`;
+  if (key === 'isOrganic') return val ? `<span style="color:#00d4aa">🌿 Yes</span>` : `<span style="color:#64748b">No</span>`;
+  if (key === 'price') return `<span style="color:#fbbf24">₹${val}</span>`;
+  if (key === 'totalAmount') return `<span style="color:#00d4aa;font-weight:600">₹${val}</span>`;
+  if (key === 'averageRating') return val > 0 ? `<span style="color:#fbbf24">★ ${val}</span>` : `<span style="color:#4a5568">–</span>`;
+  if (key === 'items' && Array.isArray(val)) return `<span style="color:#94a3b8">${val.length} item${val.length!==1?'s':''}</span>`;
+  if (typeof val === 'boolean') return val ? `<span style="color:#00d4aa">true</span>` : `<span style="color:#f87171">false</span>`;
+  if (typeof val === 'object') return `<span style="color:#64748b">{object}</span>`;
+  const str = String(val);
+  return `<span title="${str}">${str.length > 28 ? str.slice(0, 28) + '…' : str}</span>`;
+}
+
+// ─── View Document ────────────────────────────────────────────────────────────
+async function viewDocument(collection, id) {
+  try {
+    const { document } = await api.get(`/admin/collection/${collection}/${id}`);
+    currentDocId = id;
+    document.getElementById('json-title').textContent = `${getIcon(collection)} ${collection} / ${id.slice(-8)}`;
+    document.getElementById('json-content').innerHTML = syntaxHighlight(JSON.stringify(document, null, 2));
+    document.getElementById('json-delete-btn').onclick = () => deleteDocument(collection, id);
+    document.getElementById('json-modal').classList.remove('hidden');
+  } catch (err) {
+    toast.error(err.message);
+  }
+}
+
+// ─── Delete Document ──────────────────────────────────────────────────────────
+async function deleteDocument(collection, id) {
+  if (!confirm(`⚠️ Delete this ${collection.slice(0,-1)} document?\n\nThis cannot be undone!`)) return;
+  try {
+    await api.delete(`/admin/collection/${collection}/${id}`);
+    document.getElementById('json-modal').classList.add('hidden');
+    toast.success('Document deleted.');
+    loadCollection(collection, currentPage, currentSearch);
+  } catch (err) {
+    toast.error(err.message);
+  }
+}
+
+// ─── JSON Syntax Highlighting ────────────────────────────────────────────────
+function syntaxHighlight(json) {
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    (match) => {
+      let cls = 'json-number';
+      if (/^"/.test(match)) cls = /:$/.test(match) ? 'json-key' : 'json-string';
+      else if (/true|false/.test(match)) cls = 'json-bool';
+      else if (/null/.test(match)) cls = 'json-null';
+      return `<span class="${cls}">${match}</span>`;
+    }
+  );
+}
+
+function closeJSONModal(e) {
+  if (e.target.id === 'json-modal') document.getElementById('json-modal').classList.add('hidden');
+}
+
+function copyJSON() {
+  const text = document.getElementById('json-content').textContent;
+  navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard!')).catch(() => toast.error('Copy failed'));
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+async function exportCollectionJSON(name) {
+  try {
+    const res = await api.get(`/admin/collection/${name}?page=1&limit=1000`);
+    const blob = new Blob([JSON.stringify(res.documents, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `localbasket_${name}_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    toast.success(`Exported ${res.documents.length} ${name} documents!`);
+  } catch (err) { toast.error(err.message); }
+}
+
+async function exportJSON() {
+  toast.info('Exporting all collections…');
+  const all = {};
+  for (const col of ['users', 'products', 'orders']) {
+    const res = await api.get(`/admin/collection/${col}?page=1&limit=1000`).catch(() => ({ documents: [] }));
+    all[col] = res.documents;
+  }
+  const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `localbasket_full_export_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast.success('Full database exported!');
+}
+
+function setActiveNav(id) {
+  document.querySelectorAll('.db-nav-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function showView(name) {
+  if (name === 'overview') loadOverview();
+}
+
+async function refreshAll() {
+  await loadOverview();
+  if (currentCollection) loadCollection(currentCollection, currentPage, currentSearch);
+  toast.success('Refreshed!');
+}
+</script>
+</body>
+</html>

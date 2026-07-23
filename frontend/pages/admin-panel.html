@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - LocalBasket</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { background: var(--gray-50); }
+    .view { display: none; }
+    .view.active { display: block; }
+    .loading-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+    }
+    .admin-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .admin-kicker {
+      color: var(--gray-400);
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .admin-actions {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      flex-wrap: wrap;
+    }
+    .admin-filterbar {
+      background: white;
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      gap: .75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .admin-filterbar .form-control { max-width: 220px; }
+    .admin-table-card {
+      background: white;
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .admin-table-card .table-wrap {
+      border: none;
+      border-radius: 0;
+    }
+    .admin-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: .22rem .65rem;
+      border-radius: 99px;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .admin-pill.customer { background: rgba(58,124,165,.12); color: var(--sky); }
+    .admin-pill.farmer { background: rgba(45,106,45,.12); color: var(--leaf); }
+    .admin-pill.admin { background: rgba(212,168,83,.2); color: #8a6400; }
+    .admin-pill.active { background: rgba(45,106,45,.12); color: var(--leaf); }
+    .admin-pill.inactive { background: rgba(192,57,43,.12); color: var(--tomato); }
+    .admin-order-items {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+      max-width: 320px;
+    }
+    .admin-order-item {
+      background: var(--gray-50);
+      border-radius: var(--radius-sm);
+      color: var(--earth);
+      font-size: .75rem;
+      padding: .18rem .45rem;
+    }
+    .admin-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--gray-400);
+    }
+    .admin-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .5rem;
+      padding: 1rem;
+      border-top: 1px solid var(--gray-100);
+      flex-wrap: wrap;
+    }
+    .admin-mobile-tabs {
+      display: none;
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 900px) {
+      .admin-mobile-tabs { display: flex; }
+      .admin-filterbar .form-control { max-width: none; }
+      .admin-filterbar { align-items: stretch; }
+      .admin-filterbar input,
+      .admin-filterbar select,
+      .admin-filterbar button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container">
+    <a href="../index.html" class="navbar-brand">LocalBasket</a>
+    <button class="navbar-toggle" onclick="toggleMobileNav()">Menu</button>
+    <ul class="navbar-nav" id="admin-nav">
+      <li><a href="#" onclick="showView('overview')">Overview</a></li>
+      <li><a href="#" onclick="showView('users')">Users</a></li>
+      <li><a href="#" onclick="showView('orders')">Orders</a></li>
+      <li><a href="db-viewer.html">DB Viewer</a></li>
+      <li><a href="#" onclick="logout()">Logout</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" id="side-avatar">A</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="side-name">Admin</div>
+        <div class="sidebar-user-role">Admin</div>
+      </div>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="#" class="active" data-admin-nav="overview" onclick="showView('overview', this)"><span class="nav-icon">#</span> Overview</a></li>
+      <li><a href="#" data-admin-nav="users" onclick="showView('users', this)"><span class="nav-icon">@</span> User Status</a></li>
+      <li><a href="#" data-admin-nav="orders" onclick="showView('orders', this)"><span class="nav-icon">$</span> All Orders</a></li>
+      <li><a href="db-viewer.html"><span class="nav-icon">{ }</span> DB Viewer</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <div class="admin-mobile-tabs">
+      <button class="btn btn-ghost btn-sm" onclick="showView('overview')">Overview</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('users')">Users</button>
+      <button class="btn btn-ghost btn-sm" onclick="showView('orders')">Orders</button>
+    </div>
+
+    <section class="view active" id="view-overview">
+      <div class="admin-toolbar">
+        <div>
+          <div class="admin-kicker">Control center</div>
+          <h2>Admin Panel</h2>
+        </div>
+        <div class="admin-actions">
+          <button class="btn btn-outline btn-sm" onclick="refreshOverview()">Refresh</button>
+          <a class="btn btn-ghost btn-sm" href="db-viewer.html">Open DB Viewer</a>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val" id="stat-users">-</div><div class="stat-label">Total Users</div></div>
+        <div class="stat-card accent-wheat"><div class="stat-val" id="stat-farmers">-</div><div class="stat-label">Farmers</div></div>
+        <div class="stat-card accent-sky"><div class="stat-val" id="stat-customers">-</div><div class="stat-label">Customers</div></div>
+        <div class="stat-card accent-mango"><div class="stat-val" id="stat-orders">-</div><div class="stat-label">Total Orders</div></div>
+        <div class="stat-card accent-tomato"><div class="stat-val" id="stat-active-orders">-</div><div class="stat-label">Active Orders</div></div>
+        <div class="stat-card accent-wheat"><div class="stat-val" id="stat-revenue">-</div><div class="stat-label">Revenue</div></div>
+      </div>
+
+      <div class="mt-3 admin-table-card">
+        <div class="p-2 flex items-center justify-between flex-wrap gap-1">
+          <div>
+            <h3>Recent Orders</h3>
+            <p class="text-muted text-sm">Latest customer activity across LocalBasket.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="showView('orders')">View All Orders</button>
+        </div>
+        <div id="recent-orders" class="p-2">
+          <div class="loading-container"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-users">
+      <div class="admin-toolbar">
+        <div>
+          <div class="admin-kicker">Access control</div>
+          <h2>User Status</h2>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadUsers()">Refresh Users</button>
+      </div>
+
+      <div class="admin-filterbar">
+        <input type="search" class="form-control" id="user-search" placeholder="Search name, email, phone" onkeypress="if(event.key==='Enter')loadUsers(1)">
+        <select class="form-control" id="user-role" onchange="loadUsers(1)" title="Filter by role">
+          <option value="">All roles</option>
+          <option value="customer">Customers</option>
+          <option value="farmer">Farmers</option>
+          <option value="admin">Admins</option>
+        </select>
+        <select class="form-control" id="user-active" onchange="loadUsers(1)" title="Filter by status">
+          <option value="">All statuses</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+        <button class="btn btn-primary" onclick="loadUsers(1)">Search</button>
+      </div>
+
+      <div class="admin-table-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="users-body">
+              <tr><td colspan="7"><div class="loading-container"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="admin-pagination" id="users-pagination"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-orders">
+      <div class="admin-toolbar">
+        <div>
+          <div class="admin-kicker">Order operations</div>
+          <h2>All Orders</h2>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="loadOrders()">Refresh Orders</button>
+      </div>
+
+      <div class="admin-filterbar">
+        <input type="search" class="form-control" id="order-search" placeholder="Search order, customer, item" oninput="renderOrders()">
+        <select class="form-control" id="order-status" onchange="renderOrders()" title="Filter by order status">
+          <option value="">All statuses</option>
+          <option value="placed">Placed</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="preparing">Preparing</option>
+          <option value="out_for_delivery">Out for delivery</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div class="admin-table-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body">
+              <tr><td colspan="8"><div class="loading-container"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-overlay" id="order-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Order Details</h3>
+      <button class="modal-close" onclick="closeOrderModal()">x</button>
+    </div>
+    <div id="order-modal-content"></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+let currentAdmin = null;
+let usersPage = 1;
+let cachedOrders = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  initAdminPanel();
+});
+
+async function initAdminPanel() {
+  if (!api.isLoggedIn()) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  try {
+    const { user } = await api.auth.me();
+    if (user.role !== 'admin') {
+      toast.error('Access denied. Please login as admin.');
+      setTimeout(() => { window.location.href = 'login.html'; }, 900);
+      return;
+    }
+
+    currentAdmin = user;
+    api.setAuth(api.getToken(), user);
+    document.getElementById('side-avatar').textContent = currentAdmin.name[0].toUpperCase();
+    document.getElementById('side-name').textContent = currentAdmin.name;
+
+    refreshOverview();
+    loadUsers();
+    loadOrders();
+  } catch (err) {
+    toast.error(err.message);
+    setTimeout(() => { window.location.href = 'login.html'; }, 900);
+  }
+}
+
+function showView(name, linkEl) {
+  document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.sidebar-nav a').forEach(link => link.classList.remove('active'));
+  const activeLink = linkEl || document.querySelector(`[data-admin-nav="${name}"]`);
+  if (activeLink) activeLink.classList.add('active');
+  if (name === 'users') loadUsers(usersPage);
+  if (name === 'orders') loadOrders();
+}
+
+async function refreshOverview() {
+  try {
+    const { collections, revenue } = await api.admin.getStats();
+    document.getElementById('stat-users').textContent = collections.users.total;
+    document.getElementById('stat-farmers').textContent = collections.users.farmers;
+    document.getElementById('stat-customers').textContent = collections.users.customers;
+    document.getElementById('stat-orders').textContent = collections.orders.total;
+    document.getElementById('stat-active-orders').textContent = collections.orders.pending;
+    document.getElementById('stat-revenue').textContent = 'INR ' + Number(revenue || 0).toLocaleString('en-IN');
+  } catch (err) {
+    toast.error(err.message);
+  }
+}
+
+async function loadUsers(page = usersPage) {
+  usersPage = page;
+  const tbody = document.getElementById('users-body');
+  tbody.innerHTML = `<tr><td colspan="7"><div class="loading-container"><div class="spinner"></div></div></td></tr>`;
+
+  const params = {
+    page,
+    limit: 12,
+    search: document.getElementById('user-search').value.trim(),
+    role: document.getElementById('user-role').value,
+    active: document.getElementById('user-active').value
+  };
+
+  try {
+    const res = await api.users.getAll(params);
+    if (!res.users.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="admin-empty">No users found.</div></td></tr>`;
+    } else {
+      tbody.innerHTML = res.users.map(renderUserRow).join('');
+    }
+    renderUsersPagination(res.currentPage, res.pages, res.total);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="admin-empty">${escapeHtml(err.message)}</div></td></tr>`;
+  }
+}
+
+function renderUserRow(user) {
+  const isSelf = user._id === currentAdmin._id;
+  const actionLabel = user.isActive ? 'Deactivate' : 'Activate';
+  const statusClass = user.isActive ? 'active' : 'inactive';
+  return `
+    <tr>
+      <td><strong>${escapeHtml(user.name || 'Unnamed')}</strong></td>
+      <td>${escapeHtml(user.email || '-')}</td>
+      <td><span class="admin-pill ${escapeAttr(user.role)}">${escapeHtml(user.role || '-')}</span></td>
+      <td>${escapeHtml(user.phone || '-')}</td>
+      <td><span class="admin-pill ${statusClass}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+      <td>${formatDate(user.createdAt)}</td>
+      <td>
+        <button class="btn ${user.isActive ? 'btn-danger' : 'btn-primary'} btn-sm"
+          ${isSelf ? 'disabled title="You cannot change your own admin account"' : ''}
+          onclick="toggleUserStatus('${user._id}')">${actionLabel}</button>
+      </td>
+    </tr>
+  `;
+}
+
+function renderUsersPagination(current, pages, total) {
+  const el = document.getElementById('users-pagination');
+  if (!pages || pages <= 1) {
+    el.innerHTML = `<span class="text-sm text-muted">${total || 0} user${total === 1 ? '' : 's'}</span>`;
+    return;
+  }
+  el.innerHTML = `
+    <span class="text-sm text-muted">Page ${current} of ${pages} (${total} users)</span>
+    <button class="btn btn-ghost btn-sm" ${current <= 1 ? 'disabled' : ''} onclick="loadUsers(${current - 1})">Prev</button>
+    <button class="btn btn-ghost btn-sm" ${current >= pages ? 'disabled' : ''} onclick="loadUsers(${current + 1})">Next</button>
+  `;
+}
+
+async function toggleUserStatus(id) {
+  const rowUser = id === currentAdmin._id;
+  if (rowUser) return;
+  if (!confirm('Change this user account status?')) return;
+
+  try {
+    const res = await api.users.toggleStatus(id);
+    toast.success(res.message);
+    await Promise.all([loadUsers(usersPage), refreshOverview()]);
+  } catch (err) {
+    toast.error(err.message);
+  }
+}
+
+async function loadOrders() {
+  const tbody = document.getElementById('orders-body');
+  tbody.innerHTML = `<tr><td colspan="8"><div class="loading-container"><div class="spinner"></div></div></td></tr>`;
+
+  try {
+    const { orders } = await api.orders.getAll();
+    cachedOrders = orders;
+    renderOrders();
+    renderRecentOrders(orders.slice(0, 5));
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="admin-empty">${escapeHtml(err.message)}</div></td></tr>`;
+  }
+}
+
+function renderOrders() {
+  const tbody = document.getElementById('orders-body');
+  const status = document.getElementById('order-status').value;
+  const search = document.getElementById('order-search').value.trim().toLowerCase();
+  const orders = cachedOrders.filter(order => {
+    const matchesStatus = !status || order.status === status;
+    const haystack = [
+      order.orderNumber,
+      order._id,
+      order.customer?.name,
+      order.customer?.email,
+      ...(order.items || []).map(item => item.name)
+    ].filter(Boolean).join(' ').toLowerCase();
+    return matchesStatus && (!search || haystack.includes(search));
+  });
+
+  if (!orders.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="admin-empty">No orders found.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = orders.map(renderOrderRow).join('');
+}
+
+function renderOrderRow(order) {
+  const items = (order.items || []).slice(0, 3).map(item => `
+    <span class="admin-order-item">${escapeHtml(item.name || 'Item')} x${Number(item.quantity || 0)}</span>
+  `).join('');
+  const extra = order.items && order.items.length > 3
+    ? `<span class="admin-order-item">+${order.items.length - 3} more</span>`
+    : '';
+
+  return `
+    <tr>
+      <td>
+        <strong>${escapeHtml(order.orderNumber || ('#' + order._id.slice(-8).toUpperCase()))}</strong>
+        <div class="order-id">${escapeHtml(order._id)}</div>
+      </td>
+      <td>
+        <strong>${escapeHtml(order.customer?.name || 'Customer')}</strong>
+        <div class="text-sm text-muted">${escapeHtml(order.customer?.email || '-')}</div>
+      </td>
+      <td><div class="admin-order-items">${items}${extra}</div></td>
+      <td><strong class="text-leaf">INR ${Number(order.totalAmount || 0).toFixed(2)}</strong></td>
+      <td>${escapeHtml(order.paymentMethod || '-')}<div class="text-sm text-muted">${escapeHtml(order.paymentStatus || '-')}</div></td>
+      <td><span class="status-badge status-${escapeAttr(order.status || 'placed')}">${escapeHtml(fmt.status(order.status || 'placed'))}</span></td>
+      <td>${formatDate(order.createdAt)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="viewOrder('${order._id}')">View</button></td>
+    </tr>
+  `;
+}
+
+function renderRecentOrders(orders) {
+  const el = document.getElementById('recent-orders');
+  if (!orders.length) {
+    el.innerHTML = `<div class="admin-empty">No orders yet.</div>`;
+    return;
+  }
+  el.innerHTML = orders.map(order => `
+    <div class="order-card">
+      <div class="order-header">
+        <div>
+          <strong>${escapeHtml(order.orderNumber || ('#' + order._id.slice(-8).toUpperCase()))}</strong>
+          <div class="order-id">${formatDate(order.createdAt)} by ${escapeHtml(order.customer?.name || 'Customer')}</div>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="status-badge status-${escapeAttr(order.status || 'placed')}">${escapeHtml(fmt.status(order.status || 'placed'))}</span>
+          <strong class="text-leaf">INR ${Number(order.totalAmount || 0).toFixed(2)}</strong>
+          <button class="btn btn-ghost btn-sm" onclick="viewOrder('${order._id}')">View</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function viewOrder(id) {
+  try {
+    const { order } = await api.orders.getById(id);
+    const items = (order.items || []).map(item => `
+      <div class="flex justify-between items-center p-1" style="border-bottom:1px solid var(--gray-100)">
+        <div>
+          <strong>${escapeHtml(item.name || 'Item')}</strong>
+          <div class="text-sm text-muted">Farmer: ${escapeHtml(item.farmer?.farmName || item.farmer?.name || 'Local farmer')}</div>
+        </div>
+        <div class="text-sm">${Number(item.quantity || 0)} ${escapeHtml(item.unit || '')} x INR ${Number(item.price || 0).toFixed(2)}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('order-modal-content').innerHTML = `
+      <div class="flex justify-between items-center mb-2">
+        <strong>${escapeHtml(order.orderNumber || ('#' + order._id.slice(-8).toUpperCase()))}</strong>
+        <span class="status-badge status-${escapeAttr(order.status || 'placed')}">${escapeHtml(fmt.status(order.status || 'placed'))}</span>
+      </div>
+      <p class="text-sm mb-1"><strong>Customer:</strong> ${escapeHtml(order.customer?.name || 'Customer')} (${escapeHtml(order.customer?.email || '-')})</p>
+      <p class="text-sm mb-1"><strong>Phone:</strong> ${escapeHtml(order.customer?.phone || order.deliveryAddress?.phone || '-')}</p>
+      <p class="text-sm mb-1"><strong>Address:</strong> ${escapeHtml(formatAddress(order.deliveryAddress))}</p>
+      <p class="text-sm mb-2"><strong>Payment:</strong> ${escapeHtml(order.paymentMethod || '-')} (${escapeHtml(order.paymentStatus || '-')})</p>
+      <hr class="divider">
+      ${items}
+      <div class="flex justify-between mt-2 font-bold">
+        <span>Total</span>
+        <span class="text-leaf">INR ${Number(order.totalAmount || 0).toFixed(2)}</span>
+      </div>
+    `;
+    document.getElementById('order-modal').classList.add('open');
+  } catch (err) {
+    toast.error(err.message);
+  }
+}
+
+function closeOrderModal() {
+  document.getElementById('order-modal').classList.remove('open');
+}
+
+function formatAddress(address) {
+  if (!address) return '-';
+  return [address.address, address.city, address.state, address.pincode].filter(Boolean).join(', ') || '-';
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+
+function escapeAttr(value) {
+  return String(value ?? '').replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+function logout() {
+  api.clearAuth();
+  window.location.href = 'login.html';
+}
+
+function toggleMobileNav() {
+  document.getElementById('admin-nav').classList.toggle('open');
+}
+</script>
+</body>
+</html>
